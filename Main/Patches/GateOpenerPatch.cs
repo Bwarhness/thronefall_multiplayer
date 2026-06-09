@@ -36,10 +36,14 @@ public static class GateOpenerPatch
 			var flag = true;
 			foreach (var unit in TagManager.instance.PlayerUnits)
 			{
-				if (!unit.gameObject.activeInHierarchy ||
+				// not every PlayerUnit-tagged object has a PathfindMovementPlayerunit in the current game; skip
+				// those instead of NRE'ing on a null GetComponent.
+				var unitPathfinder = unit.GetComponent<PathfindMovementPlayerunit>();
+				if (unitPathfinder == null ||
+				    !unit.gameObject.activeInHierarchy ||
 				    !(Vector3.Distance(self.transform.position, unit.transform.position) <= self.clearDistance) ||
 				    !unit.Tags.Contains(TagManager.ETag.AUTO_Alive) ||
-				    !(Vector3.Distance(unit.transform.position, unit.GetComponent<PathfindMovementPlayerunit>().HomePosition) >= 0.5f))
+				    !(Vector3.Distance(unit.transform.position, unitPathfinder.HomePosition) >= 0.5f))
 				{
 					continue;
 				}
@@ -65,14 +69,16 @@ public static class GateOpenerPatch
 		{
 			foreach (var unit in TagManager.instance.PlayerUnits)
 			{
-				if (!unit.gameObject.activeInHierarchy ||
+				var unitPathfinder = unit.GetComponent<PathfindMovementPlayerunit>();
+				if (unitPathfinder == null ||
+				    !unit.gameObject.activeInHierarchy ||
 				    !(Vector3.Distance(self.transform.position, unit.transform.position) <= self.openDistance) ||
 				    !unit.Tags.Contains(TagManager.ETag.AUTO_Alive) ||
-				    !(Vector3.Distance(unit.transform.position, unit.GetComponent<PathfindMovementPlayerunit>().HomePosition) >= 0.5f))
+				    !(Vector3.Distance(unit.transform.position, unitPathfinder.HomePosition) >= 0.5f))
 				{
 					continue;
 				}
-				
+
 				openMethod.GetValue();
 				return;
 			}
