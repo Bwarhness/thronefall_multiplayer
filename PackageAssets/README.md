@@ -30,6 +30,11 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.0.7 (community update)
+* Netcode: tightened client position correction for players/allies/enemies so synced pawns track the host
+  closely instead of trailing by seconds (large errors now snap instead of slowly catching up). Also shows the
+  shared gold on the treasury counter.
+
 #### 1.0.6 (community update)
 * Recompiled against the current Thronefall; fixed the load crash (`CameraRig.TransitionToTarget` hook) and a
   series of in-level NullReferenceExceptions introduced by the game update (camera/RVO/minimap/treasury/unit-type

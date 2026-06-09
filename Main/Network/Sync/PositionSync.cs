@@ -27,11 +27,16 @@ public class PositionSync : BaseTargetSync
         }
     }
 
+    // Correction strength applied each received position update: output = Lerp(clientPos, hostPos, weight),
+    // where weight ramps from MinWeight (at <= MinDistance error) to MaxWeight (at >= MaxDistance error).
+    // The original values were extremely soft (closing only ~10% of the gap within 15 units), so client entities
+    // trailed the host by seconds. These are tightened a lot: small errors are corrected hard, and any error past
+    // MaxDistance snaps fully (MaxWeight 1.0) to kill rubber-banding on teleports/respawns/late spawns.
     private readonly Dictionary<IdentifierType, DevianceConstant> _devianceConstants = new()
     {
-        { IdentifierType.Player, new DevianceConstant(0.05f, 0.9f, 15f, 60f) },
-        { IdentifierType.Ally, new DevianceConstant(0.1f, 0.7f, 15f, 30f) },
-        { IdentifierType.Enemy, new DevianceConstant(0.1f, 0.7f, 15f, 30f) }
+        { IdentifierType.Player, new DevianceConstant(0.35f, 1.0f, 1f, 10f) },
+        { IdentifierType.Ally, new DevianceConstant(0.5f, 1.0f, 0.5f, 8f) },
+        { IdentifierType.Enemy, new DevianceConstant(0.5f, 1.0f, 0.5f, 8f) }
     };
 
     protected override bool ShouldUpdate => true;
