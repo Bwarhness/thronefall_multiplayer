@@ -27,8 +27,21 @@ static class PlayerMovementPatch
         On.CameraRig.Start += Start;
 	}
 
-	// Noop because we do this work in PlayerMovement.Awake instead
-	private static void Start(On.CameraRig.orig_Start original, CameraRig self) {}
+	// The rig is relocated in PlayerMovement.Awake, so we deliberately skip vanilla CameraRig.Start (it would
+	// re-parent the rig). But vanilla Start also wires the Rewired zoom input, currentTarget, and default zoom
+	// that the game's UpdateZoom/Update now require — replicate just those bits here (Start runs once ReInput is
+	// ready). Without this, UpdateZoom NREs on a null 'input' and the camera would zoom to targetOrthSize 0.
+	private static void Start(On.CameraRig.orig_Start original, CameraRig self)
+	{
+		var t = Traverse.Create(self);
+		t.Field<Transform>("currentTarget").Value = t.Field<Transform>("cameraTarget").Value;
+		t.Field<Rewired.Player>("input").Value = Rewired.ReInput.players.GetPlayer(0);
+		var zoomLevels = t.Field<float[]>("zoomLevels").Value;
+		if (zoomLevels != null && zoomLevels.Length > 0)
+		{
+			t.Field<float>("targetOrthSize").Value = zoomLevels[0];
+		}
+	}
 
 	private static void Awake(On.PlayerMovement.orig_Awake original, PlayerMovement self)
 	{

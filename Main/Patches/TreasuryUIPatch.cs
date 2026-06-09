@@ -53,6 +53,23 @@ public class TreasuryUIPatch
 	    }
 
 	    overrideActivation.Value = OverrideFocus;
-	    original(self);
+
+	    // game 2024+ added TreasuryUI.targetPlayer, set in the vanilla Start that we override; the vanilla Update
+	    // dereferences it (targetPlayer.Balance). Lazily bind it to the local player and only run the original
+	    // once it's available, so Update can't NRE before the local player exists.
+	    var targetPlayer = Traverse.Create(self).Field<PlayerInteraction>("targetPlayer");
+	    if (targetPlayer.Value == null)
+	    {
+		    var localData = Plugin.Instance.PlayerManager.LocalPlayer?.Data;
+		    if (localData != null)
+		    {
+			    targetPlayer.Value = localData.GetComponent<PlayerInteraction>();
+		    }
+	    }
+
+	    if (targetPlayer.Value != null)
+	    {
+		    original(self);
+	    }
     }
 }
