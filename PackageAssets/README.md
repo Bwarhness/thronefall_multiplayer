@@ -1,8 +1,10 @@
-![Thronefall Multiplayer logo](https://github.com/MunWolf/thronefall_multiplayer/blob/main/PackageAssets/icon.png?raw=true)
+# Thronefall Multiplayer (community-updated)
 
-# Thronefall Multiplayer
+> **Community fork of [Thronefall Multiplayer](https://github.com/MunWolf/thronefall_multiplayer) by Rikhardur Bjarni Einarsson (BadWolf).**
+> All credit for the mod goes to BadWolf, who archived the original in Feb 2024 and invited others to fork and
+> release it with credit. This build only updates it to run on the current (2024+) Thronefall, which broke the
+> original 1.0.5 release on load.
 
-This is the [Thronefall Multiplayer](https://github.com/MunWolf/thronefall_multiplayer) mod.
 Using the Steamworks backend and API to connect players in Thronefall to play together in a true multiplayer experience.
 Each player selects their own weapon to bring into battle as you build a town together against the growing tide of enemies.
 
@@ -27,6 +29,11 @@ At this moment, you can use the following channels to ask for help
 Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
+
+#### 1.0.6 (community update)
+* Recompiled against the current Thronefall; fixed the load crash (`CameraRig.TransitionToTarget` hook) and a
+  series of in-level NullReferenceExceptions introduced by the game update (camera/RVO/minimap/treasury/unit-type
+  display, ally & enemy pathfinder sync, gate logic). See the GitHub repo for the full commit list.
 
 #### 1.0.4
 * Update to work with content update 1.

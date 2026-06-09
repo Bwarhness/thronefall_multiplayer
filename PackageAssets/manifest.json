@@ -1,8 +1,8 @@
 {
     "name": "ThronefallMultiplayer",
     "version_number": "{VERSION}",
-    "website_url": "https://github.com/MunWolf/thronefall_multiplayer",
-    "description": "Adds the ability to play with friends using the steam backend, host or connect to games, invite friends and enjoy Thronefall together.",
+    "website_url": "https://github.com/Bwarhness/thronefall_multiplayer",
+    "description": "Play with friends via Steam - host/join games and play Thronefall together. Community update of BadWolf's mod for the current game version.",
     "dependencies": [
         "BepInEx-BepInExPack_Thronefall-5.4.2100"
     ]
