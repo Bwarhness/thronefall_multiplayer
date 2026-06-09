@@ -39,14 +39,10 @@ public class TreasuryUIPatch
 
     private static void Update(On.TreasuryUI.orig_Update original, TreasuryUI self)
     {
-	    var coinQueue = Traverse.Create(self).Field<int>("coinQeue");
 	    var overrideActivation = Traverse.Create(self).Field<bool>("overrideActivation");
 	    var activationCounter = Traverse.Create(self).Field<float>("activationCounter");
 	    var activationLifetime = Traverse.Create(self).Field<float>("activationLifetime");
 	    var displayText = Traverse.Create(self).Field<TextMeshProUGUI>("displayText");
-	    var instantiatedCoins = Traverse.Create(self).Field<List<GameObject>>("instantiatedCoins");
-	    displayText.Value.text = $"<sprite name=\"coin\">{GlobalData.Balance}";
-	    coinQueue.Value = Math.Max(GlobalData.Balance, 0) - instantiatedCoins.Value.Count;
 	    if (!OverrideFocus && overrideActivation.Value)
 	    {
 		    activationCounter.Value = activationLifetime.Value;
@@ -54,9 +50,10 @@ public class TreasuryUIPatch
 
 	    overrideActivation.Value = OverrideFocus;
 
-	    // game 2024+ added TreasuryUI.targetPlayer, set in the vanilla Start that we override; the vanilla Update
-	    // dereferences it (targetPlayer.Balance). Lazily bind it to the local player and only run the original
-	    // once it's available, so Update can't NRE before the local player exists.
+	    // game 2024+ added TreasuryUI.targetPlayer, set in the vanilla Start (which we override). The vanilla
+	    // Update renders the coin count + spawns coins from targetPlayer.Balance. Lazily bind it to the local
+	    // player, and mirror the shared multiplayer gold (GlobalData.Balance) onto that player's balance so the
+	    // vanilla Update shows the correct amount instead of the per-player value (which is ~0 in shared-gold MP).
 	    var targetPlayer = Traverse.Create(self).Field<PlayerInteraction>("targetPlayer");
 	    if (targetPlayer.Value == null)
 	    {
@@ -69,7 +66,11 @@ public class TreasuryUIPatch
 
 	    if (targetPlayer.Value != null)
 	    {
+		    Traverse.Create(targetPlayer.Value).Field<int>("balance").Value = GlobalData.Balance;
 		    original(self);
 	    }
+
+	    // Safety net (and covers the brief window before a local player exists): always show the shared balance.
+	    displayText.Value.text = $"<sprite name=\"coin\">{GlobalData.Balance}";
     }
 }
