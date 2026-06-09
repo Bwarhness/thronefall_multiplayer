@@ -184,7 +184,20 @@ public static class BuildSlotPatch
         building.OnUpgradeChoiceComplete(branch.choiceDetails);
         _disableNetworkHook = false;
         upgradeSelected.Value = null;
-        
+
+        // DIAGNOSTIC (walls invisible to remote peers): report the post-build state so we can tell whether the
+        // slot built logically on this peer (bpActive) but its combined wall mesh (MeshFusionPro via
+        // BuildingMeshTracker) failed to re-bake. Remove once the wall sync is fixed.
+        var diagParent = Traverse.Create(building).Field<GameObject>("buildingParent").Value;
+        var diagTracker = Traverse.Create(building).Field<BuildingMeshTracker>("buildingMeshTracker").Value;
+        var diagFuserActive = false;
+        if (diagTracker != null)
+        {
+            var fuser = Traverse.Create(diagTracker).Field<NGS.MeshFusionPro.MeshFusionSource>("meshFuser").Value;
+            diagFuserActive = fuser != null && fuser.gameObject.activeInHierarchy;
+        }
+        Plugin.Log.LogInfo($"[BuildDiag] built id={id} lvl={building.Level} byPlayer={playerId} local={Plugin.Instance.PlayerManager.LocalId} bpActive={(diagParent != null && diagParent.activeInHierarchy)} meshTracker={(diagTracker != null)} fuserActive={diagFuserActive}");
+
         var focussed = Traverse.Create(building.buildingInteractor).Field<bool>("focussed");
         if (building.buildingInteractor.IsWaitingForChoice)
         {

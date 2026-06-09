@@ -198,6 +198,14 @@ static class PlayerMovementPatch
 	
 	private static void TeleportTo(On.PlayerMovement.orig_TeleportTo original, PlayerMovement self, Vector3 position)
 	{
+		// On the level-select hub, TelePlayer caches a PlayerMovement reference and teleports it every frame. But
+		// our Awake destroys the vanilla player object and swaps in the networked prefab, so that cached reference
+		// is a destroyed (Unity fake-null) object — calling GetComponent on it NRE-floods the log. Bail out.
+		if (self == null)
+		{
+			return;
+		}
+
 		var playerNetworkData = self.GetComponent<PlayerNetworkData>();
 		if (playerNetworkData == null)
 		{

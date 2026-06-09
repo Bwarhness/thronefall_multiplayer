@@ -30,6 +30,12 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.0.9 (community update)
+* Fixed the "Oops, you died. You'll respawn shortly." message getting stuck on screen while you were alive and
+  playing (the revive panel is now tied to your actual state).
+* Fixed two NullReferenceException floods: one near gates with siege weapons / certain units, and one on the
+  level-select screen when returning from a level.
+
 #### 1.0.8 (community update)
 * Netcode overhaul (round 2): fixed a bug that resent every unit's full path each frame (flooding the network);
   client enemies/allies now keep their local movement prediction and fold the host's authoritative position in as
