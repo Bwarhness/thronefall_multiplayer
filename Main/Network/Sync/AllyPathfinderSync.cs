@@ -16,6 +16,13 @@ public class AllyPathfinderSync : BaseTargetSync
     {
         foreach (var data in Identifier.GetIdentifiers(IdentifierType.Ally))
         {
+            // Skip ally identifiers whose target isn't a movable player unit (destroyed, or a structure without a
+            // PathfindMovementPlayerunit); CreateSyncPacket dereferences that component and would NRE otherwise.
+            if (data.target == null || data.target.GetComponent<PathfindMovementPlayerunit>() == null)
+            {
+                continue;
+            }
+
             yield return (new IdentifierData { Type = IdentifierType.Ally, Id = data.id }, data.target);
         }
     }

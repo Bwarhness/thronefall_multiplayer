@@ -78,7 +78,14 @@ static class PlayerMovementPatch
 	    {
 		    return;
 	    }
-	    
+
+	    // Vanilla sets the PlayerMovement.instance singleton in Awake, which we skip for networked players.
+	    // Various vanilla systems (e.g. MinimapRenderer.DrawPlayer) read it, so point it at the local player.
+	    if (playerNetworkData.IsLocal && PlayerMovement.instance != self)
+	    {
+		    PlayerMovement.instance = self;
+	    }
+
         var hp = Traverse.Create(self).Field<Hp>("hp").Value;
         var rvoController = Traverse.Create(self).Field<RVOController>("rvoController").Value;
         var heavyArmorEquipped = Traverse.Create(self).Field<bool>("heavyArmorEquipped").Value;

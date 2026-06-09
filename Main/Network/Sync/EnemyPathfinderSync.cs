@@ -15,6 +15,13 @@ public class EnemyPathfinderSync : BaseTargetSync
     {
         foreach (var data in Identifier.GetIdentifiers(IdentifierType.Enemy))
         {
+            // Skip enemy identifiers without a PathfindMovementEnemy (destroyed or non-pathfinding objects);
+            // CreateSyncPacket dereferences that component and would NRE otherwise.
+            if (data.target == null || data.target.GetComponent<PathfindMovementEnemy>() == null)
+            {
+                continue;
+            }
+
             yield return (new IdentifierData { Type = IdentifierType.Enemy, Id = data.id }, data.target);
         }
     }
