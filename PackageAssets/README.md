@@ -30,6 +30,13 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.0.8 (community update)
+* Netcode overhaul (round 2): fixed a bug that resent every unit's full path each frame (flooding the network);
+  client enemies/allies now keep their local movement prediction and fold the host's authoritative position in as
+  a smoothly-decaying correction (instead of trailing behind), with a hard snap for teleports/respawns; capped
+  sync to ~20 Hz so it no longer scales with the host's frame rate. Synced pawns should track the host much more
+  tightly.
+
 #### 1.0.7 (community update)
 * Netcode: tightened client position correction for players/allies/enemies so synced pawns track the host
   closely instead of trailing by seconds (large errors now snap instead of slowly catching up). Also shows the

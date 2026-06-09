@@ -6,6 +6,9 @@ public static class Helpers
 {
     public const float Epsilon = 128 * float.Epsilon;
     public const float EpsilonSqr = 64 * float.Epsilon;
+    // Real position dead-band (squared) for "did this move enough to resend?" checks. 0.0025 = 5cm.
+    // (EpsilonSqr above is ~0 and must NOT be used for position change detection — it never suppresses a send.)
+    public const float PositionEpsilonSqr = 0.0025f;
     
     private const float SpawnRadiusIncrement = 5.0f;
     private const int SpawnAngleIncrement = 60;

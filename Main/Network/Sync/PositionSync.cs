@@ -65,7 +65,12 @@ public class PositionSync : BaseTargetSync
         return output;
     }
     
-    protected override float ForceUpdateTimer => 3f;
+    // Distance past which an enemy/ally position correction snaps instead of smoothing (teleport/respawn/spawn).
+    private const float EnemyAllySnapDistance = 7f;
+
+    // Throttle: send at most ~20 Hz (decoupled from host frame rate), keepalive every 1s.
+    protected override float MinWaitTimer => 0.05f;
+    protected override float ForceUpdateTimer => 1f;
 
     protected override IEnumerable<(IdentifierData id, GameObject target)> Targets()
     {
@@ -104,7 +109,7 @@ public class PositionSync : BaseTargetSync
     {
         var a = (SyncPositionPacket)current;
         var b = (SyncPositionPacket)last;
-        return (a.Position - b.Position).sqrMagnitude < Helpers.EpsilonSqr;
+        return (a.Position - b.Position).sqrMagnitude < Helpers.PositionEpsilonSqr;
     }
 
     protected override bool Filter(CSteamID peer, IdentifierData id, GameObject target)
@@ -153,16 +158,15 @@ public class PositionSync : BaseTargetSync
         }
         else
         {
-            var speed = sync.Target.Type == IdentifierType.Enemy
-                ? target.GetComponent<PathfindMovementEnemy>().movementSpeed
-                : target.GetComponent<PathfindMovementPlayerunit>().movementSpeed;
-            
-            target.transform.position = CalculatePosition(
-                sync.Target.Type,
-                speed,
-                target.transform.position,
-                sync.Position
-            );
+            // Enemies/allies locally predict their movement via pathfinding, so don't overwrite the position with
+            // a trailing Lerp. Fold the host correction in smoothly (and snap on large jumps) via the smoother.
+            var smoother = target.GetComponent<PositionErrorSmoother>();
+            if (smoother == null)
+            {
+                smoother = target.AddComponent<PositionErrorSmoother>();
+            }
+
+            smoother.ApplyCorrection(sync.Position, EnemyAllySnapDistance);
         }
     }
 }

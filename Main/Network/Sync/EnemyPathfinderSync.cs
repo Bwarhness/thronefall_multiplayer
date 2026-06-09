@@ -11,6 +11,9 @@ namespace ThronefallMP.Network.Sync;
 
 public class EnemyPathfinderSync : BaseTargetSync
 {
+    // Paths change rarely (only on repath); cap to ~10 Hz instead of riding the host frame rate.
+    protected override float MinWaitTimer => 0.1f;
+
     protected override IEnumerable<(IdentifierData id, GameObject target)> Targets()
     {
         foreach (var data in Identifier.GetIdentifiers(IdentifierType.Enemy))
@@ -62,7 +65,9 @@ public class EnemyPathfinderSync : BaseTargetSync
 
         for (var i = 0; i < a.Path.Count; ++i)
         {
-            if ((a.Path[i] - b.Path[i]).sqrMagnitude < Helpers.EpsilonSqr)
+            // BUGFIX: was '< EpsilonSqr' (≈0), which flagged identical paths as changed and resent the whole
+            // path every frame (flooding the reliable channel). A point counts as changed when it DIFFERS.
+            if ((a.Path[i] - b.Path[i]).sqrMagnitude > Helpers.PositionEpsilonSqr)
             {
                 return false;
             }
