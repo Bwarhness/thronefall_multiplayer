@@ -30,7 +30,7 @@ public static class WeaponEquipperPatch
                     break;
                 }
 
-                self.GetComponentInParent<PlayerInteraction>().EquipWeapon(self.activeWeapon);
+                self.GetComponentInParent<PlayerInteraction>().EquipWeapon(self.activeWeapon, self.passiveWeapon);
                 self.GetComponentInParent<PlayerUpgradeManager>();
                 self.GetComponentInParent<PlayerAttack>().AssignManualAttack(self.activeWeapon);
                 self.gameObject.AddComponent<PlayerWeaponVisuals>().Init(self.visuals, self.passiveWeapon);

@@ -30,14 +30,9 @@ public static class NightCallPatch
         if (active.Value)
         {
             var player = data.GetComponent<PlayerInteraction>();
-            if (SettingsManager.Instance.UseLargeInGameUI)
-            {
-                self.scaleParent.localScale = Vector3.one * 1.5f;
-            }
-            else
-            {
-                self.scaleParent.localScale = Vector3.one;
-            }
+            // game 2024+ removed the SettingsManager.UseLargeInGameUI toggle; in-game UI scaling is now handled
+            // globally via the canvas reference-resolution factor, so this element no longer scales itself.
+            self.scaleParent.localScale = Vector3.one;
             
             if (data.SharedData.CallNightButton && player.IsFreeToCallNight)
             {

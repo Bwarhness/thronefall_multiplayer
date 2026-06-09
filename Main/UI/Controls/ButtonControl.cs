@@ -155,7 +155,8 @@ public class ButtonControl : MonoBehaviour
         }
 
         _lerpSize = Math.Min(_lerpSize + Time.deltaTime / SizeChangeTime, 1.0f);
-        Text.fontSize = Lerp.Interpolate(_startSize, _endSize, _lerpSize);
+        // UnityEngine.UIElements.Experimental.Lerp became inaccessible; its Interpolate is a plain linear lerp.
+        Text.fontSize = Mathf.Lerp(_startSize, _endSize, _lerpSize);
     }
 
     public void Reset()

@@ -187,7 +187,9 @@ public static class Equip
         }
         
         Plugin.Log.LogInfoFiltered("Equipment", "Currently Unlocked");
-        foreach (var unlocked in PerkManager.instance.UnlockedEquippables)
+        // game 2024+ renamed PerkManager.UnlockedEquippables -> allEquippables (the full, stable equippable
+        // list). Using the complete list keeps the equipment<->id mapping identical across clients.
+        foreach (var unlocked in PerkManager.instance.allEquippables)
         {
             var equipment = Convert(unlocked.name);
             Plugin.Log.LogInfoFiltered("Equipment", $"- {equipment} = {unlocked.name}");

@@ -44,9 +44,12 @@ public class EnemySpawnerPatch
 	    treasureHunterActive.Value = false;
 	    original(self);
 	    treasureHunterActive.Value = old;
-	    if (self.FinalWaveComingUp && old && Plugin.Instance.Network.Server)
+	    // game 2024+ replaced the single PerkManager.treasureHunterGoldAmount with per-wave amounts surfaced
+	    // through EnemySpawner.GetTreasureHunterBonus(wave, out amount) (covers the two-before/one-before/final
+	    // waves). Route the bonus through the synced GlobalData.Balance on the server, as before.
+	    if (old && Plugin.Instance.Network.Server && self.GetTreasureHunterBonus(self.Wavenumber, out var treasureHunterBonus))
 	    {
-		    GlobalData.Balance += PerkManager.instance.treasureHunterGoldAmount;
+		    GlobalData.Balance += treasureHunterBonus;
 	    }
     }
 
@@ -105,8 +108,16 @@ public class EnemySpawnerPatch
 		}
 		
 		waitBeforeNextSpawn.Value = self.interval;
+		// game 2024+ added a required NNConstraint param to GetRandomPointOnSpawnLine; pick the constraint with
+		// the same 3-way priority as vanilla Spawn.Update (LargeUnit > Flying > ground).
+		var tags = self.enemyPrefab.GetComponentInChildren<TaggedObject>().Tags;
+		var flying = tags.Contains(TagManager.ETag.Flying);
+		var large = tags.Contains(TagManager.ETag.LargeUnit);
 		var randomPointOnSpawnLine = self.GetRandomPointOnSpawnLine(
-			self.enemyPrefab.GetComponentInChildren<TaggedObject>().Tags.Contains(TagManager.ETag.Flying));
+			flying,
+			large
+				? EnemySpawner.instance.groundConstraintLarge
+				: (flying ? EnemySpawner.instance.flyingConstraint : EnemySpawner.instance.groundConstraint));
 
 		var coins = 0;
 		var spawnedUnits = Traverse.Create(self).Field<int>("spawnedUnits");

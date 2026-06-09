@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using HarmonyLib;
 using I2.Loc;
 using Rewired.Integration.UnityUI;
 using ThronefallMP.UI.Dialogs;
@@ -76,8 +77,10 @@ public static class UIManager
         var textMesh = multiplayer.GetComponent<TextMeshProUGUI>();
         textMesh.text = "Multiplayer";
         var button = multiplayer.GetComponent<TFUITextButton>();
-        button.onSelectionStateChange.m_PersistentCalls.m_Calls.Clear();
-        button.onApply.m_PersistentCalls.m_Calls.Clear();
+        // game/Unity update made UnityEventBase.m_PersistentCalls inaccessible to external asms; clear the
+        // inspector-wired persistent listeners via reflection (PersistentCallGroup.Clear()).
+        Traverse.Create(button.onSelectionStateChange).Field("m_PersistentCalls").Method("Clear").GetValue();
+        Traverse.Create(button.onApply).Field("m_PersistentCalls").Method("Clear").GetValue();
         button.onApply.AddListener(() =>
         {
             LobbyListPanel.Open();

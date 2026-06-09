@@ -70,7 +70,7 @@ public static class PlayerInteractionPatch
             {
                 focussedInteractor.Value.InteractionBegin(self);
             }
-            else if (self.EquippedWeapon != null)
+            else if (self.ManualAttack != null)
             {
                 var packet = new ManualAttackPacket { Player = data.id };
                 Plugin.Instance.Network.Send(packet, true);

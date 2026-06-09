@@ -117,7 +117,7 @@ public static class CommandUnitsPatch
         var switchedToHold = Traverse.Create(self).Field<bool>("switchedToHold");
         if (data.SharedData.CommandUnitsButton && !data.CommandUnitsButtonLast || hpPlayer.Value.HpValue <= 0f)
         {
-            self.PlaceCommandedUnitsAndCalculateTargetPositions();
+            self.PlaceCommandedUnitsAndCalculateTargetPositions(false);
             timeSincePlace.Value = 0f;
             switchedToHold.Value = false;
         }
@@ -142,7 +142,7 @@ public static class CommandUnitsPatch
         data.CommandUnitsButtonLast = data.SharedData.CommandUnitsButton;
     }
 
-    private static void PlaceCommandedUnitsAndCalculateTargetPositions(On.CommandUnits.orig_PlaceCommandedUnitsAndCalculateTargetPositions orig, CommandUnits self)
+    private static void PlaceCommandedUnitsAndCalculateTargetPositions(On.CommandUnits.orig_PlaceCommandedUnitsAndCalculateTargetPositions orig, CommandUnits self, bool _smartCommand)
     {
         if (!Plugin.Instance.Network.Server || !self.commanding)
         {
@@ -326,7 +326,7 @@ public static class CommandUnitsPatch
         
         if (upgradeManager.Value.commander)
         {
-             unit.movementSpeed *= UpgradeCommander.instance.moveSpeedMultiplicator;
+             unit.movementSpeed *= self.commanderUnitMoveSpeedMulti;
              return;
         }
         

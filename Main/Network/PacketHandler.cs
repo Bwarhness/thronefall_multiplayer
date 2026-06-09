@@ -281,7 +281,7 @@ public static class PacketHandler
             return;
         }
         
-        var attack = player.GetComponent<PlayerInteraction>().EquippedWeapon;
+        var attack = player.GetComponent<PlayerInteraction>().ManualAttack;
         attack.TryToAttack();
     }
 

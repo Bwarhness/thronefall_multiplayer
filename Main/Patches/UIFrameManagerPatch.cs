@@ -42,7 +42,7 @@ public static class UIFrameManagerPatch
                 Traverse.Create(_disconnectButton).Field<string>("originalString").Value = "Disconnect";
                 textMesh.text = "Disconnect";
                 textMesh.SetAllDirty();
-                _disconnectButton.onApply.m_PersistentCalls.Clear();
+                Traverse.Create(_disconnectButton.onApply).Field("m_PersistentCalls").Method("Clear").GetValue();
                 _disconnectButton.onApply.AddListener(() =>
                 {
                     Plugin.Instance.Network.Local();
