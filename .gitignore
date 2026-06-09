@@ -37,3 +37,5 @@ install.cfg
 
 lib/*
 !lib/MMHOOK_Assembly-CSharp.dll
+# Local no-SDK build shim (SDK build generates PluginInfo from csproj <Version>)
+Main/PluginInfo.cs
