@@ -156,6 +156,17 @@ public class PlayerManager
         player.Object.transform.position = position;
         player.Object.SetActive(true);
 
+        // Vanilla sets the PlayerMovement.instance singleton in Awake, which networked players skip. Several
+        // vanilla systems read it (e.g. MinimapRenderer.DrawPlayer), so bind it to the local player here.
+        if (player.Id == LocalId)
+        {
+            var movement = player.Object.GetComponent<PlayerMovement>();
+            if (movement != null)
+            {
+                PlayerMovement.instance = movement;
+            }
+        }
+
         var label = new GameObject($"player_{player.Id}_label");
         label.SetActive(false);
         label.AddComponent<TextMeshPro>();

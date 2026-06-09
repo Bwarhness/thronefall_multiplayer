@@ -145,7 +145,12 @@ static class PlayerMovementPatch
 		{
 			velocity.Value *= PerkManager.instance.racingHorse_SpeedMultiplyer;
 		}
-		rvoController.velocity = velocity.Value;
+		// Match vanilla: only push velocity into the RVO agent when the controller is enabled. On the overworld
+		// the RVO agent isn't registered with a simulator, and set_velocity NREs otherwise.
+		if (rvoController != null && rvoController.enabled)
+		{
+			rvoController.velocity = velocity.Value;
+		}
 		moving.Value = velocity.Value.sqrMagnitude > 0.1f;
 		if (moving.Value)
 		{
