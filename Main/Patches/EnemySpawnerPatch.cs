@@ -8,25 +8,52 @@ namespace ThronefallMP.Patches;
 public class EnemySpawnerPatch
 {
 	private static int _nextEnemyId;
+	private static int? _loadedBalance;
+
     public static void Apply()
     {
 	    On.EnemySpawner.Start += Start;
 	    On.EnemySpawner.Update += Update;
 	    On.EnemySpawner.OnStartOfTheDay += OnStartOfTheDay;
+	    On.EnemySpawner.OnSave += OnSave;
+	    On.EnemySpawner.OnLoad += OnLoad;
+    }
+
+    private static void OnSave(On.EnemySpawner.orig_OnSave original, EnemySpawner self, string guid)
+    {
+	    original(self, guid);
+	    // Vanilla persists gold per-pawn ("balance" on each PlayerInteraction), but in MP the pawn
+	    // clones share one SaveLoadEntity GUID and only the local pawn mirrors the shared gold, so
+	    // which pawn's value lands in the save is enumeration-order luck. Persist the shared balance
+	    // on the EnemySpawner entity instead — it is always present in the scene's entity snapshot.
+	    // TrueBalance folds in coins still on the ground / in flight, matching what vanilla saves.
+	    var interaction = PlayerInteraction.instance;
+	    MatchSaveLoadHandler.SaveValue(guid, "mpSharedBalance",
+		    interaction != null ? interaction.TrueBalance : GlobalData.Internal.Balance);
+    }
+
+    private static void OnLoad(On.EnemySpawner.orig_OnLoad original, EnemySpawner self, string guid)
+    {
+	    original(self, guid);
+	    var value = 0;
+	    _loadedBalance = MatchSaveLoadHandler.TryLoadValue<int>(guid, "mpSharedBalance", ref value)
+		    ? value
+		    : (int?)null;
     }
 
     private static void Start(On.EnemySpawner.orig_Start original, EnemySpawner self)
     {
 	    // EnemySpawner.OnLoad (Awake-time save-load pass) zeroes goldBalanceAtStart and sets
 	    // loadedBalanceFromSave on retry/continue, so both must be read before original.
-	    var loadedFromSave = Traverse.Create(self).Field<bool>("loadedBalanceFromSave").Value;
+	    var loadedBalanceFromSave = Traverse.Create(self).Field<bool>("loadedBalanceFromSave").Value;
 	    var captured = self.goldBalanceAtStart;
-	    var restored = PlayerInteractionPatch.ConsumeLoadedBalance();
+	    var restored = _loadedBalance;
+	    _loadedBalance = null;
 
-	    // Zero the field so vanilla's per-player AddCoin loop grants nothing (the shared balance is
-	    // assigned once below, not once per registered player). Vanilla still adds its start bonuses
-	    // to the field inside original (Loan always, Royal Mint only on fresh runs), so the field
-	    // value after original is exactly the bonus gold vanilla intended.
+	    // Zero the field so the per-player AddCoin grant only carries vanilla's start bonuses
+	    // (Loan, and Royal Mint on fresh runs). On the server those still reach GlobalData once
+	    // per registered player via the AddCoin hook — harmless ONLY because the branches below
+	    // assign (not add) the final Balance/NetWorth, overwriting the inflated values.
 	    self.goldBalanceAtStart = 0;
 	    original(self);
 	    var vanillaBonuses = self.goldBalanceAtStart;
@@ -38,10 +65,10 @@ public class EnemySpawnerPatch
 		    return;
 	    }
 
-	    if (loadedFromSave)
+	    if (loadedBalanceFromSave)
 	    {
 		    // Retry/continue: vanilla grants no start gold or mint bonus and instead restores the
-		    // dawn-save balance (captured by PlayerInteractionPatch from PlayerInteraction.OnLoad).
+		    // dawn-save balance (persisted on this entity by the OnSave hook above).
 		    if (restored == null)
 		    {
 			    Plugin.Log.LogWarning("Level loaded from save but no restored balance was captured.");

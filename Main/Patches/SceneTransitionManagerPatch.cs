@@ -64,7 +64,8 @@ public static class SceneTransitionManagerPatch
                 To = scene,
                 From = CurrentScene,
                 // Carries the presser's fresh-vs-continue choice (RestartLastDay sets false,
-                // Start Over sets true) so all peers' save-load passes agree.
+                // Start Over sets true) so all peers' save-load passes agree. Only consumed for
+                // To==From restarts; normal level entry intentionally ignores it.
                 OverwriteSave = MatchSaveLoadHandler.OverwriteCurrentSave
             };
             

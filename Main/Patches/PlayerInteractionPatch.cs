@@ -9,11 +9,6 @@ namespace ThronefallMP.Patches;
 
 public static class PlayerInteractionPatch
 {
-    // Vanilla restores the dawn-save gold into the per-pawn balance field during the Awake-time load
-    // pass; the mod mirrors GlobalData.Balance over that field every frame, so EnemySpawnerPatch.Start
-    // consumes the captured value to seed the shared balance instead.
-    private static int? _loadedBalance;
-
     public static void Apply()
     {
         On.PlayerInteraction.Awake += Awake;
@@ -22,14 +17,6 @@ public static class PlayerInteractionPatch
         On.PlayerInteraction.RunInteraction += RunInteraction;
         On.PlayerInteraction.AddCoin += AddCoin;
         On.PlayerInteraction.SpendCoins += SpendCoins;
-        On.PlayerInteraction.OnLoad += OnLoad;
-    }
-
-    public static int? ConsumeLoadedBalance()
-    {
-        var value = _loadedBalance;
-        _loadedBalance = null;
-        return value;
     }
 
     private static void Awake(On.PlayerInteraction.orig_Awake original, PlayerInteraction self)
@@ -135,11 +122,5 @@ public static class PlayerInteractionPatch
     private static void SpendCoins(On.PlayerInteraction.orig_SpendCoins orig, PlayerInteraction self, int amount)
     {
         GlobalData.Balance -= amount;
-    }
-
-    private static void OnLoad(On.PlayerInteraction.orig_OnLoad original, PlayerInteraction self, string guid)
-    {
-        original(self, guid);
-        _loadedBalance = Traverse.Create(self).Field<int>("balance").Value;
     }
 }

@@ -128,6 +128,11 @@ public class LevelDataSync : BaseSync
             Equip.ClearEquipments();
             foreach (var perk in packet.Perks)
             {
+                if (perk == Equipment.Invalid)
+                {
+                    continue;
+                }
+
                 if (!Equip.Weapons.Contains(perk))
                 {
                     Equip.EquipEquipment(perk);
