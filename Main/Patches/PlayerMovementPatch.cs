@@ -130,7 +130,11 @@ static class PlayerMovementPatch
 			sprintingToggledOn.Value = false;
 		}
 		slowedFor.Value -= Time.deltaTime;
-		if (Plugin.Instance.Network.Server)
+		// Slow sources (DamagePlayerWhenEnteringRange.ApplyDamage, BloodWandActiveAttEffect.Effect) call
+		// PlayerMovement.Slow locally on the machine they run on, writing slowedFor. The OWNER derives Slowed
+		// from its own slowedFor and the input sync carries it to other peers; the server ALSO derives it so
+		// host-applied slows on remote pawns still propagate via its SyncPlayersPacket relay.
+		if (Plugin.Instance.Network.Server || playerNetworkData.IsLocal)
 		{
 			playerNetworkData.SharedData.Slowed = slowedFor.Value > 0f;
 		}

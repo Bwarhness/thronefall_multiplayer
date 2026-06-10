@@ -36,6 +36,7 @@ public class SyncPlayersPacket : BasePacket
             writer.Write(data.Shared.CallNightButton);
             writer.Write(data.Shared.CallNightFill);
             writer.Write(data.Shared.CommandUnitsButton);
+            writer.Write(data.Shared.Slowed);
         }
     }
 
@@ -59,7 +60,8 @@ public class SyncPlayersPacket : BasePacket
                     InteractButton = reader.ReadBoolean(),
                     CallNightButton = reader.ReadBoolean(),
                     CallNightFill = reader.ReadFloat(),
-                    CommandUnitsButton = reader.ReadBoolean()
+                    CommandUnitsButton = reader.ReadBoolean(),
+                    Slowed = reader.ReadBoolean()
                 },
             });
         }

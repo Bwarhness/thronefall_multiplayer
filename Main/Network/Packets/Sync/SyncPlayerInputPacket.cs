@@ -25,6 +25,7 @@ public class SyncPlayerInputPacket : BasePacket
         writer.Write(Data.InteractButton);
         writer.Write(Data.CallNightButton);
         writer.Write(Data.CommandUnitsButton);
+        writer.Write(Data.Slowed);
     }
 
     public override void Receive(Buffer reader)
@@ -37,5 +38,6 @@ public class SyncPlayerInputPacket : BasePacket
         Data.InteractButton = reader.ReadBoolean();
         Data.CallNightButton = reader.ReadBoolean();
         Data.CommandUnitsButton = reader.ReadBoolean();
+        Data.Slowed = reader.ReadBoolean();
     }
 }
