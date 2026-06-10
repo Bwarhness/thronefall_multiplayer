@@ -492,6 +492,7 @@ public class Network : MonoBehaviour
         { SyncPositionPacket.PacketID, typeof(SyncPositionPacket) },
         { SyncResourcePacket.PacketID, typeof(SyncResourcePacket) },
         
+        { BossSpawnPacket.PacketID, typeof(BossSpawnPacket) },
         { CombinedPacket.PacketID, typeof(CombinedPacket) },
         { DamageFeedbackPacket.PacketID, typeof(DamageFeedbackPacket) },
         { DayNightPacket.PacketID, typeof(DayNightPacket) },

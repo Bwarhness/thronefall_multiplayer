@@ -55,6 +55,7 @@ public enum PacketId
     ManualAttack,
     Victory,
     LockTarget,
+    BossSpawn,
 }
 
 public static class PacketHandler
@@ -67,6 +68,7 @@ public static class PacketHandler
         { DisconnectPacket.PacketID, HandleDisconnect },
         { PeerListPacket.PacketID, HandlePeerList },
         
+        { BossSpawnPacket.PacketID, HandleBossSpawn },
         { DamageFeedbackPacket.PacketID, HandleDamageFeedback },
         { DayNightPacket.PacketID, HandleDayNight },
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
@@ -180,6 +182,21 @@ public static class PacketHandler
     {
         var packet = (EnemySpawnPacket)ipacket;
         EnemySpawnerPatch.SpawnEnemy(packet.Wave, packet.Spawn, packet.Position, packet.Id, packet.Coins, packet.Elite);
+    }
+
+    private static void HandleBossSpawn(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        var packet = (BossSpawnPacket)ipacket;
+        var spawn = BossSpawnRegistry.Resolve(packet.SpawnRef);
+        if (spawn == null)
+        {
+            Plugin.Log.LogWarningFiltered("PacketHandler", $"No boss spawn registered for ref {packet.SpawnRef}");
+            return;
+        }
+
+        // Spawns the minion with its authoritative Identifier id and advances the Spawn's
+        // spawnedUnits/finished bookkeeping so the boss' wave loop terminates on this peer too.
+        EnemySpawnerPatch.SpawnEnemy(spawn, packet.DifficultyMulti, packet.Position, packet.Id, packet.Coins, packet.Elite);
     }
 
     private static void HandlePlayerTeleport(SteamNetworkingIdentity sender, BasePacket ipacket)

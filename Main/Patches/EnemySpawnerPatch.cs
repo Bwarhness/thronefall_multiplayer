@@ -24,7 +24,7 @@ public class EnemySpawnerPatch
 		    balance += PerkManager.instance.royalMint_startGoldBonus;
 		    self.goldBalanceAtStart = -PerkManager.instance.royalMint_startGoldBonus;
 	    }
-	    
+
 	    original(self);
 	    self.goldBalanceAtStart = balance;
 	    if (Plugin.Instance.Network.Server)
@@ -38,7 +38,7 @@ public class EnemySpawnerPatch
     {
 	    Identifier.Clear(IdentifierType.Enemy);
 	    _nextEnemyId = 0;
-	    
+
 	    var treasureHunterActive = Traverse.Create(self).Field<bool>("treasureHunterActive");
 	    var old = treasureHunterActive.Value;
 	    treasureHunterActive.Value = false;
@@ -102,24 +102,19 @@ public class EnemySpawnerPatch
         }
     }
 
-    private static void UpdateSpawn(Spawn self, int waveNumber, int spawnIndex)
+    // Single id source for every synced enemy spawn (regular waves and boss minion waves) so the
+    // two pipelines can never hand out colliding Identifier ids. Reset in OnStartOfTheDay together
+    // with Identifier.Clear(Enemy).
+    internal static ushort AllocateEnemyId()
     {
-	    var finished = Traverse.Create(self).Field<bool>("finished");
-		if (finished.Value)
-		{
-			return;
-		}
-		
-		var waitBeforeNextSpawn = Traverse.Create(self).Field<float>("waitBeforeNextSpawn");
-		waitBeforeNextSpawn.Value -= Time.deltaTime;
-		if (waitBeforeNextSpawn.Value > 0f)
-		{
-			return;
-		}
-		
-		waitBeforeNextSpawn.Value = self.interval;
-		// game 2024+ added a required NNConstraint param to GetRandomPointOnSpawnLine; pick the constraint with
-		// the same 3-way priority as vanilla Spawn.Update (LargeUnit > Flying > ground).
+	    return (ushort)_nextEnemyId++;
+    }
+
+    // Shared by the regular pipeline (UpdateSpawn) and the boss minion pipeline (SpawnPatch).
+    // game 2024+ added a required NNConstraint param to GetRandomPointOnSpawnLine; pick the constraint with
+    // the same 3-way priority as vanilla Spawn.Update (LargeUnit > Flying > ground).
+    internal static Vector3 RollSpawnPosition(Spawn self)
+    {
 		var tags = self.enemyPrefab.GetComponentInChildren<TaggedObject>().Tags;
 		var flying = tags.Contains(TagManager.ETag.Flying);
 		var large = tags.Contains(TagManager.ETag.LargeUnit);
@@ -139,6 +134,27 @@ public class EnemySpawnerPatch
 				self.SpawnedUnits % 5 / 5f);
 		}
 
+		return randomPointOnSpawnLine;
+    }
+
+    private static void UpdateSpawn(Spawn self, int waveNumber, int spawnIndex)
+    {
+	    var finished = Traverse.Create(self).Field<bool>("finished");
+		if (finished.Value)
+		{
+			return;
+		}
+
+		var waitBeforeNextSpawn = Traverse.Create(self).Field<float>("waitBeforeNextSpawn");
+		waitBeforeNextSpawn.Value -= Time.deltaTime;
+		if (waitBeforeNextSpawn.Value > 0f)
+		{
+			return;
+		}
+
+		waitBeforeNextSpawn.Value = self.interval;
+		var randomPointOnSpawnLine = RollSpawnPosition(self);
+
 		var coins = 0;
 		var spawnedUnits = Traverse.Create(self).Field<int>("spawnedUnits");
 		var goldCoinsPerEnemy = Traverse.Create(self).Field<int[]>("goldCoinsPerEnemy");
@@ -151,32 +167,25 @@ public class EnemySpawnerPatch
 		{
 			Wave = (byte)waveNumber,
 			Spawn = (byte)spawnIndex,
-			Id = (ushort)_nextEnemyId,
+			Id = AllocateEnemyId(),
 			Position = randomPointOnSpawnLine,
 			Coins = (byte)coins,
 			Elite = self.eliteEnemies
 		};
-		
+
 		Plugin.Instance.Network.Send(packet, true);
-		++_nextEnemyId;
     }
 
     public static void SpawnEnemy(int waveNumber, int spawnIndex, Vector3 position, ushort id, int coins, bool elite)
     {
 	    var wave = EnemySpawner.instance.waves[waveNumber];
-	    var spawn = wave.spawns[spawnIndex];
-	    var spawnedUnits = Traverse.Create(spawn).Field<int>("spawnedUnits");
-	    var finished = Traverse.Create(spawn).Field<bool>("finished");
-
-	    SpawnEnemy(spawn, wave, position, id, coins, elite);
-	    spawnedUnits.Value++;
-	    if (spawnedUnits.Value >= spawn.count)
-	    {
-		    finished.Value = true;
-	    }
+	    SpawnEnemy(wave.spawns[spawnIndex], wave.difficultyMulti, position, id, coins, elite);
     }
 
-    private static GameObject SpawnEnemy(Spawn self, Wave wave, Vector3 position, ushort id, int coins, bool elite)
+    // Shared spawn implementation for HandleEnemySpawn (regular waves, difficultyMulti taken from
+    // the wave) and HandleBossSpawn (boss minion waves, difficultyMulti as the boss passed it to
+    // Spawn.Update: 1 for Ghostqueen, the private wave's difficultyMulti for KeyframedBoss).
+    public static void SpawnEnemy(Spawn self, float difficultyMulti, Vector3 position, ushort id, int coins, bool elite)
     {
 		GameObject gameObject;
 		if (self.spawnLine == self.enemyPrefab.transform)
@@ -200,7 +209,7 @@ public class EnemySpawnerPatch
 			{
 				instance.weaponOnSpawn.Attack(
 					position + Vector3.up * instance.weaponAttackHeight,
-					null, 
+					null,
 					Vector3.forward,
 					gameObject.GetComponent<TaggedObject>()
 				);
@@ -216,11 +225,11 @@ public class EnemySpawnerPatch
 		Spawn.AdjustEnemyParametersAfterSpawn(gameObject, elite);
 
 		// AdjustEnemyParametersAfterSpawn does not take the per-wave difficulty; vanilla
-		// Spawn.Update folds wave.difficultyMulti into hp and Lerp(1, multi, 0.5) into damage.
-		singleHp.maxHp *= wave.difficultyMulti;
+		// Spawn.Update folds difficultyMulti into hp and Lerp(1, multi, 0.5) into damage.
+		singleHp.maxHp *= difficultyMulti;
 		singleHp.SetHpToMaxHp();
 
-		var damageMulti = Mathf.Lerp(1f, wave.difficultyMulti, 0.5f);
+		var damageMulti = Mathf.Lerp(1f, difficultyMulti, 0.5f);
 		// Vanilla god of chaos forces a 3 second initial attack cooldown on non-exploding enemies.
 		var godOfChaos = PerkManager.instance.GodOfChaosEquipped && !tags.Contains(TagManager.ETag.Exploding);
 		foreach (var attack in gameObject.GetComponentsInChildren<AutoAttack>())
@@ -246,6 +255,14 @@ public class EnemySpawnerPatch
 			singleHp.enemyToSpawnOnDeath = PerkManager.instance.godOfAfterlifeEnemy;
 		}
 
-		return gameObject;
+		// Advance the same bookkeeping vanilla Spawn.Update keeps so Spawn.Finished and
+		// Wave.HasFinished() observe the wave completing on every peer (the boss minion loops in
+		// Ghostqueen.SpawnGhosts and KeyframedBoss.Update depend on this).
+		var spawnedUnits = Traverse.Create(self).Field<int>("spawnedUnits");
+		spawnedUnits.Value++;
+		if (spawnedUnits.Value >= self.count)
+		{
+			Traverse.Create(self).Field<bool>("finished").Value = true;
+		}
     }
 }
