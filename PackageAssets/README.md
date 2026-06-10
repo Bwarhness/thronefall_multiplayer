@@ -30,6 +30,24 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.0.10 (community update)
+* Mutators now actually work in multiplayer: the host applies the selected mutators' difficulty (they were
+  silently dropped at level start) AND enemies receive the vanilla spawn buffs that were missing in MP — elite
+  waves (4x HP / 3x damage + visual), per-wave difficulty scaling, anti-air, War/Growth/Range/Chaos/Afterlife god
+  effects. The mutator score bonus is paid out correctly on victory.
+* Victory is now broadcast by the host, fixing the stuck end screen where one player saw victory and the other
+  kept playing.
+* Boss fights are now synced: the Ghost Queen's and Eismoloch's summoned minions used to spawn separately on each
+  player's machine (frozen "ghost" copies on the client that never died); they now spawn host-authoritatively
+  like every other enemy.
+* Royal Protection no longer permanently shrinks commanded units' max HP with every command.
+* The victory gold bonus (and recorded highscore) no longer reads an empty remote wallet on some machines.
+* Client-side invulnerability windows (boss phases, dashes, shields) no longer block authoritative HP updates —
+  fixes stale boss HP and enemies that refused to die on one screen.
+* The on-hit slow debuff now affects client players too (they were immune) and remote players visibly slow down.
+* Weapon target-lock is now synced: your lock applies to the real (host) damage calculation, and your keypress no
+  longer re-targets other players' heroes on your machine.
+
 #### 1.0.9 (community update)
 * Fixed the "Oops, you died. You'll respawn shortly." message getting stuck on screen while you were alive and
   playing (the revive panel is now tied to your actual state).
