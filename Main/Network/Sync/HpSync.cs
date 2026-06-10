@@ -59,7 +59,8 @@ public class HpSync : BaseTargetSync
                     Target = id,
                     Hp = hp.HpValue,
                     MaxHp = hp.maxHp,
-                    KnockedOut = hp.KnockedOut
+                    KnockedOut = hp.KnockedOut,
+                    Invulnerable = hp.invulnerable
                 };
             }
         }
@@ -68,7 +69,8 @@ public class HpSync : BaseTargetSync
             Target = id,
             Hp = int.MinValue,
             MaxHp = 10,
-            KnockedOut = true
+            KnockedOut = true,
+            Invulnerable = false
         };
     }
 
@@ -78,7 +80,8 @@ public class HpSync : BaseTargetSync
         var b = (SyncHpPacket)last;
         return Math.Abs(a.Hp - b.Hp) < Helpers.Epsilon
             && Math.Abs(a.MaxHp - b.MaxHp) < Helpers.Epsilon
-            && a.KnockedOut == b.KnockedOut;
+            && a.KnockedOut == b.KnockedOut
+            && a.Invulnerable == b.Invulnerable;
     }
 
     public override bool CanHandle(BasePacket packet)
@@ -104,6 +107,11 @@ public class HpSync : BaseTargetSync
         hp.maxHp = sync.MaxHp;
         var difference = sync.Hp - hp.HpValue;
         HpPatch.AllowHealthChangeOnClient = true;
+        // Client-local invulnerability windows (boss phase coroutines, dash i-frames, shields)
+        // make Hp.TakeDamage drop authoritative corrections, including the int.MinValue destroy
+        // for enemies already dead on the host. Clear the flag while applying the correction,
+        // then adopt the host's value below.
+        hp.invulnerable = false;
         if (difference > 0f)
         {
             // If we are not active then don't revive/heal.
@@ -129,6 +137,7 @@ public class HpSync : BaseTargetSync
             hp.TakeDamage(-difference, invokeFeedbackEvents: false);
         }
 
+        hp.invulnerable = sync.Invulnerable;
         HpPatch.AllowHealthChangeOnClient = false;
     }
 }
