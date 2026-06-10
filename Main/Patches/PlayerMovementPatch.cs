@@ -130,10 +130,11 @@ static class PlayerMovementPatch
 			sprintingToggledOn.Value = false;
 		}
 		slowedFor.Value -= Time.deltaTime;
-		// Slow sources (DamagePlayerWhenEnteringRange.ApplyDamage, BloodWandActiveAttEffect.Effect) call
-		// PlayerMovement.Slow locally on the machine they run on, writing slowedFor. The OWNER derives Slowed
-		// from its own slowedFor and the input sync carries it to other peers; the server ALSO derives it so
-		// host-applied slows on remote pawns still propagate via its SyncPlayersPacket relay.
+		// Slow sources (e.g. the Blood Wand self-slow) call PlayerMovement.Slow locally on the machine they run on,
+		// writing slowedFor. The OWNER derives Slowed from its own slowedFor and the input sync carries it to the
+		// host and other peers; the server also derives it for its own view. NOTE: a slow applied host-side to a
+		// REMOTE pawn does not reach that pawn's owner (input sync never echoes a player's own data back) — that
+		// needs a dedicated packet and is handled with the DamagePlayerWhenEnteringRange rework.
 		if (Plugin.Instance.Network.Server || playerNetworkData.IsLocal)
 		{
 			playerNetworkData.SharedData.Slowed = slowedFor.Value > 0f;
