@@ -53,6 +53,7 @@ public enum PacketId
     CommandPlace,
     ConfirmBuild,
     ManualAttack,
+    Victory,
 }
 
 public static class PacketHandler
@@ -70,7 +71,8 @@ public static class PacketHandler
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
         { TeleportPlayerPacket.PacketID, HandlePlayerTeleport },
         { ResignPacket.PacketID, HandleResign },
-        
+        { VictoryPacket.PacketID, HandleVictory },
+
         { BuildOrUpgradePacket.PacketID, HandleBuildOrUpgrade },
         { CancelBuildPacket.PacketID, HandleCancelBuild },
         { CommandAddPacket.PacketID, HandleCommandAdd },
@@ -203,6 +205,23 @@ public static class PacketHandler
         catch
         {
             Plugin.Log.LogError("InGameResignUIHelper: Bro we can not resign here.");
+        }
+    }
+
+    private static void HandleVictory(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        // Host-authoritative victory. The server auto-rebroadcasts this (ShouldPropagate) just like ResignPacket, so
+        // we must NOT re-Send here. SetState early-returns if already in a post-match state, so it's idempotent with
+        // the vanilla SwitchToDayCoroutine trigger and with the host's own loopback copy.
+        try
+        {
+            Plugin.Log.LogDebug("Victory");
+            UIFrameManager.instance.CloseAllFrames();
+            LocalGamestate.Instance.SetState(LocalGamestate.State.AfterMatchVictory, false, true);
+        }
+        catch
+        {
+            Plugin.Log.LogError("Could not transition to victory state.");
         }
     }
 

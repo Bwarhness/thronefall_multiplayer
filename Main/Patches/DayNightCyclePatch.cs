@@ -45,6 +45,16 @@ public static class DayNightCyclePatch
             Timestate = DayNightCycle.Timestate.Day,
             NightLength = currentNightLength.Value
         }, true);
+
+        // Vanilla decides victory locally inside SwitchToDayCoroutine off the private, unsynced EnemySpawner
+        // wavenumber, so a peer whose wave count lags never transitions and its victory screen sticks. When this
+        // (the host) clears the final wave, broadcast victory authoritatively — like defeat's ResignPacket — so all
+        // peers transition together. MatchOver == wavenumber >= waves.Count-1 && !SpawningInProgress, both already
+        // true here, so this only fires on the genuinely final day.
+        if (EnemySpawner.instance.MatchOver)
+        {
+            Plugin.Instance.Network.Send(new VictoryPacket(), true);
+        }
     }
 
     private static void DawnCallAfterSunrise(On.DayNightCycle.orig_DawnCallAfterSunrise original, DayNightCycle self)

@@ -136,6 +136,16 @@ public class LevelDataSync : BaseSync
             {
                 _activeRequest.SelectedWeapons[Plugin.Instance.PlayerManager.Get(peer).Id] = perk;
             }
+            else
+            {
+                // Re-equip non-weapon perks AND mutators on the authoritative host. The game's difficulty getters
+                // (PerkManager.*Active -> IsEquipped -> currentlyEquipped.Contains) and the win reward
+                // (ScoreManager.VictoryMutatorBonus, which iterates PerkManager.CurrentlyEquipped and multiplies by
+                // EquippableMutation.scoreMultiplyerOnWin) both read CurrentlyEquipped on the host. Without this the
+                // host enters the level with only weapons equipped, so mutator difficulty never applies and the win
+                // bonus computes as 0. Clients already do this in HandleSyncPacket; this restores host parity.
+                Equip.EquipEquipment(perk);
+            }
         }
 
         Plugin.Log.LogInfo("Sending weapon request.");
