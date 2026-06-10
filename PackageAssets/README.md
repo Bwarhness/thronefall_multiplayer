@@ -30,6 +30,17 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.0.11 (community update)
+* Retrying a day after a defeat ("Try again") no longer wipes the shared gold — everyone now starts the
+  retried day with the money they had at dawn. (The shared balance is now stored in the per-day autosave.)
+* The retry / "Start over" buttons now apply the pressing player's perk & mutator selection on every machine.
+  Before, the host silently kept the old loadout, so a re-picked selection didn't change the difficulty or
+  bonuses at all.
+* "Start over" now restarts from day 1 for ALL players — previously only the player who pressed it started
+  fresh while the others reloaded their day save, desyncing the world.
+* The Loan perk's bonus starting gold now actually arrives in multiplayer, and Royal Mint's start bonus is no
+  longer incorrectly re-granted when resuming a saved day.
+
 #### 1.0.10 (community update)
 * Mutators now actually work in multiplayer: the host applies the selected mutators' difficulty (they were
   silently dropped at level start) AND enemies receive the vanilla spawn buffs that were missing in MP — elite
