@@ -62,7 +62,10 @@ public static class SceneTransitionManagerPatch
             var packet = new RequestLevelPacket
             {
                 To = scene,
-                From = CurrentScene
+                From = CurrentScene,
+                // Carries the presser's fresh-vs-continue choice (RestartLastDay sets false,
+                // Start Over sets true) so all peers' save-load passes agree.
+                OverwriteSave = MatchSaveLoadHandler.OverwriteCurrentSave
             };
             
             foreach (var item in PerkManager.instance.CurrentlyEquipped)

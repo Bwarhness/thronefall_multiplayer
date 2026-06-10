@@ -10,7 +10,8 @@ public class RequestLevelPacket : BasePacket
     public string From;
     public Equipment SelectedWeapon;
     public List<Equipment> Perks = new();
-    
+    public bool OverwriteSave;
+
     public override PacketId TypeID => PacketID;
     public override Channel Channel => Channel.Game;
 
@@ -23,6 +24,7 @@ public class RequestLevelPacket : BasePacket
         {
             writer.Write(perk);
         }
+        writer.Write(OverwriteSave);
     }
 
     public override void Receive(Buffer reader)
@@ -35,5 +37,6 @@ public class RequestLevelPacket : BasePacket
         {
             Perks.Add(reader.ReadEquipment());
         }
+        OverwriteSave = reader.ReadBoolean();
     }
 }

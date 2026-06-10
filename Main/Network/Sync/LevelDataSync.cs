@@ -120,7 +120,22 @@ public class LevelDataSync : BaseSync
 
         if (packet.To == packet.From)
         {
-            Plugin.Instance.Network.Send(new RestartLevelPacket(), true);
+            // The restart path skips the weapon-request handshake, but the pressing machine just
+            // re-applied its loadout (RestartLastDay's ApplyLoadout / the Start Over perk re-pick),
+            // which only mutated PerkManager on THAT machine. Difficulty getters and the win bonus
+            // read the host's PerkManager, so adopt the presser's perks here; the regular
+            // SyncLevelDataPacket diff then propagates them to everyone else.
+            Equip.ClearEquipments();
+            foreach (var perk in packet.Perks)
+            {
+                if (!Equip.Weapons.Contains(perk))
+                {
+                    Equip.EquipEquipment(perk);
+                }
+            }
+
+            Equip.EquipEquipment(Plugin.Instance.PlayerManager.LocalPlayer.Weapon);
+            Plugin.Instance.Network.Send(new RestartLevelPacket { OverwriteSave = packet.OverwriteSave }, true);
             return;
         }
         
@@ -270,6 +285,9 @@ public class LevelDataSync : BaseSync
                 HandleRequestPacket(peer, (RequestLevelPacket)packet);
                 break;
             case RestartLevelPacket.PacketID:
+                // Mirror the presser's fresh-vs-continue choice so every peer's save-load pass agrees
+                // (vanilla only ever set it on the machine that clicked the button).
+                MatchSaveLoadHandler.OverwriteCurrentSave = ((RestartLevelPacket)packet).OverwriteSave;
                 SceneTransitionManagerPatch.Transition(
                     SceneTransitionManagerPatch.CurrentScene,
                     SceneTransitionManagerPatch.CurrentScene

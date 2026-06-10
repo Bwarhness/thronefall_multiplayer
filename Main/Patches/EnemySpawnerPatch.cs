@@ -17,20 +17,45 @@ public class EnemySpawnerPatch
 
     private static void Start(On.EnemySpawner.orig_Start original, EnemySpawner self)
     {
-	    var balance = self.goldBalanceAtStart;
+	    // EnemySpawner.OnLoad (Awake-time save-load pass) zeroes goldBalanceAtStart and sets
+	    // loadedBalanceFromSave on retry/continue, so both must be read before original.
+	    var loadedFromSave = Traverse.Create(self).Field<bool>("loadedBalanceFromSave").Value;
+	    var captured = self.goldBalanceAtStart;
+	    var restored = PlayerInteractionPatch.ConsumeLoadedBalance();
+
+	    // Zero the field so vanilla's per-player AddCoin loop grants nothing (the shared balance is
+	    // assigned once below, not once per registered player). Vanilla still adds its start bonuses
+	    // to the field inside original (Loan always, Royal Mint only on fresh runs), so the field
+	    // value after original is exactly the bonus gold vanilla intended.
 	    self.goldBalanceAtStart = 0;
-	    if (PerkManager.instance.RoyalMintActive)
+	    original(self);
+	    var vanillaBonuses = self.goldBalanceAtStart;
+	    self.goldBalanceAtStart = captured + vanillaBonuses;
+
+	    GlobalData.LocalBalanceDelta = 0;
+	    if (!Plugin.Instance.Network.Server)
 	    {
-		    balance += PerkManager.instance.royalMint_startGoldBonus;
-		    self.goldBalanceAtStart = -PerkManager.instance.royalMint_startGoldBonus;
+		    return;
 	    }
 
-	    original(self);
-	    self.goldBalanceAtStart = balance;
-	    if (Plugin.Instance.Network.Server)
+	    if (loadedFromSave)
 	    {
-		    Plugin.Log.LogInfo($"Give starting balance {balance}");
-			GlobalData.Balance = balance;
+		    // Retry/continue: vanilla grants no start gold or mint bonus and instead restores the
+		    // dawn-save balance (captured by PlayerInteractionPatch from PlayerInteraction.OnLoad).
+		    if (restored == null)
+		    {
+			    Plugin.Log.LogWarning("Level loaded from save but no restored balance was captured.");
+		    }
+
+		    Plugin.Log.LogInfo($"Restoring dawn-save balance {restored ?? 0}");
+		    GlobalData.Internal.Balance = restored ?? 0;
+		    GlobalData.Internal.NetWorth = 0;
+	    }
+	    else
+	    {
+		    Plugin.Log.LogInfo($"Give starting balance {captured + vanillaBonuses}");
+		    GlobalData.Internal.Balance = captured + vanillaBonuses;
+		    GlobalData.Internal.NetWorth = captured + vanillaBonuses;
 	    }
     }
 
