@@ -323,7 +323,16 @@ public static class CommandUnitsPatch
             componentInChildren.SetSelected(true);
         }
         unit.GetComponent<TaggedObject>().Tags.Add(TagManager.ETag.AUTO_Commanded);
-        
+
+        // Mirror vanilla OnUnitAdd; PlaceUnit calls vanilla OnUnitRemove which scales hp back
+        // down by 1/royalProtectionHealthMulti, so skipping this permanently shrinks max hp.
+        var royalProtectionEquipped = Traverse.Create(self).Field<bool>("royalProtectionEquipped");
+        if (royalProtectionEquipped.Value)
+        {
+            var royalProtectionHealthMulti = Traverse.Create(self).Field<float>("royalProtectionHealthMulti");
+            unit.GetComponent<Hp>().ScaleHp(royalProtectionHealthMulti.Value);
+        }
+
         if (upgradeManager.Value.commander)
         {
              unit.movementSpeed *= self.commanderUnitMoveSpeedMulti;
