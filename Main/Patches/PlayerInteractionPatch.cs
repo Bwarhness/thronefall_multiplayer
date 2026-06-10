@@ -11,11 +11,25 @@ public static class PlayerInteractionPatch
 {
     public static void Apply()
     {
+        On.PlayerInteraction.Awake += Awake;
         On.PlayerInteraction.FetchCoins += FetchCoins;
         On.PlayerInteraction.FetchInteractors += FetchInteractors;
         On.PlayerInteraction.RunInteraction += RunInteraction;
         On.PlayerInteraction.AddCoin += AddCoin;
         On.PlayerInteraction.SpendCoins += SpendCoins;
+    }
+
+    private static void Awake(On.PlayerInteraction.orig_Awake original, PlayerInteraction self)
+    {
+        // Vanilla Awake just claims the PlayerInteraction.instance singleton. With multiple networked pawns the
+        // last-instantiated (often remote, balance always 0) would win it, and ScoreManager.VictoryGoldBonus reads
+        // instance.TrueBalance — so only the LOCAL pawn (whose balance mirrors the shared gold) may claim it.
+        // IsLocal is valid here: PlayerManager.InstantiatePlayer assigns id/Player before SetActive(true).
+        var data = self.GetComponent<PlayerNetworkData>();
+        if (data == null || data.IsLocal)
+        {
+            original(self);
+        }
     }
 
     private static void FetchCoins(On.PlayerInteraction.orig_FetchCoins original, PlayerInteraction self)
