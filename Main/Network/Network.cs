@@ -496,6 +496,7 @@ public class Network : MonoBehaviour
         { DamageFeedbackPacket.PacketID, typeof(DamageFeedbackPacket) },
         { DayNightPacket.PacketID, typeof(DayNightPacket) },
         { EnemySpawnPacket.PacketID, typeof(EnemySpawnPacket) },
+        { LockTargetPacket.PacketID, typeof(LockTargetPacket) },
         { RequestLevelPacket.PacketID, typeof(RequestLevelPacket)},
         { RestartLevelPacket.PacketID, typeof(RestartLevelPacket)},
         { ResignPacket.PacketID, typeof(ResignPacket)},

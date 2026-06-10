@@ -54,6 +54,7 @@ public enum PacketId
     ConfirmBuild,
     ManualAttack,
     Victory,
+    LockTarget,
 }
 
 public static class PacketHandler
@@ -69,6 +70,7 @@ public static class PacketHandler
         { DamageFeedbackPacket.PacketID, HandleDamageFeedback },
         { DayNightPacket.PacketID, HandleDayNight },
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
+        { LockTargetPacket.PacketID, HandleLockTarget },
         { TeleportPlayerPacket.PacketID, HandlePlayerTeleport },
         { ResignPacket.PacketID, HandleResign },
         { VictoryPacket.PacketID, HandleVictory },
@@ -302,6 +304,33 @@ public static class PacketHandler
         
         var attack = player.GetComponent<PlayerInteraction>().ManualAttack;
         attack.TryToAttack();
+    }
+
+    private static void HandleLockTarget(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        var packet = (LockTargetPacket)ipacket;
+        if (packet.PlayerId == Plugin.Instance.PlayerManager.LocalId)
+        {
+            // Our own lock state is authoritative locally; ignore the echo.
+            return;
+        }
+
+        var player = Plugin.Instance.PlayerManager.Get(packet.PlayerId)?.Object;
+        if (player == null)
+        {
+            return;
+        }
+
+        var attack = player.GetComponent<PlayerInteraction>().ManualAttack;
+        if (attack == null)
+        {
+            return;
+        }
+
+        var target = packet.Target.Get()?.GetComponent<TaggedObject>();
+        var traverse = Traverse.Create(attack);
+        traverse.Field<TaggedObject>("preferredTarget").Value = target;
+        traverse.Field<bool>("preferredTargetPreviouslySet").Value = target != null;
     }
 
     private static void HandleApproval(SteamNetworkingIdentity sender, BasePacket ipacket)
