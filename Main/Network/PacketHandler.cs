@@ -179,7 +179,7 @@ public static class PacketHandler
     private static void HandleEnemySpawn(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (EnemySpawnPacket)ipacket;
-        EnemySpawnerPatch.SpawnEnemy(packet.Wave, packet.Spawn, packet.Position, packet.Id, packet.Coins);
+        EnemySpawnerPatch.SpawnEnemy(packet.Wave, packet.Spawn, packet.Position, packet.Id, packet.Coins, packet.Elite);
     }
 
     private static void HandlePlayerTeleport(SteamNetworkingIdentity sender, BasePacket ipacket)

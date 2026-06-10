@@ -55,40 +55,50 @@ public class EnemySpawnerPatch
 
     private static void Update(On.EnemySpawner.orig_Update original, EnemySpawner self)
     {
+        var numberOfEnemiesOnTheMap = Traverse.Create(self).Field<int>("numberOfEnemiesOnTheMap");
         if (!self.SpawningInProgress)
         {
+            // Vanilla keeps the enemy count fresh while idle so the pacing gate below
+            // does not act on a stale value when the next wave starts.
+            numberOfEnemiesOnTheMap.Value =
+                TagManager.instance.CountAllTaggedObjectsWithTag(TagManager.ETag.EnemyOwned);
             return;
         }
-        
+
         var lastSpawnPeriodDuration = Traverse.Create(self).Field<float>("lastSpawnPeriodDuration");
         lastSpawnPeriodDuration.Value += Time.deltaTime;
-        if (Plugin.Instance.Network.Server)
+        // Vanilla pacing gate: hold back wave processing while too many enemies are alive.
+        if (numberOfEnemiesOnTheMap.Value < Traverse.Create(self).Field<int>("pauseSpawningAtEnemyCount").Value)
         {
-	        for (var i = 0; i < self.waves[self.Wavenumber].spawns.Count; i++)
+	        if (Plugin.Instance.Network.Server)
 	        {
-		        UpdateSpawn(self.waves[self.Wavenumber].spawns[i], self.Wavenumber, i);
+		        for (var i = 0; i < self.waves[self.Wavenumber].spawns.Count; i++)
+		        {
+			        UpdateSpawn(self.waves[self.Wavenumber].spawns[i], self.Wavenumber, i);
+		        }
+	        }
+
+	        if (self.waves[self.Wavenumber].HasFinished())
+	        {
+		        if (!self.InfinitelySpawning)
+		        {
+			        self.StopSpawnAfterWaveAndReset();
+		        }
+		        else if (TagManager.instance.CountAllTaggedObjectsWithTag(TagManager.ETag.EnemyOwned) <= 0)
+		        {
+			        foreach (var spawn in self.waves[self.Wavenumber].spawns)
+			        {
+				        spawn.Reset(false);
+			        }
+		        }
 	        }
         }
 
-        if (!self.waves[self.Wavenumber].HasFinished())
+        numberOfEnemiesOnTheMap.Value =
+            TagManager.instance.CountAllTaggedObjectsWithTag(TagManager.ETag.EnemyOwned);
+        if (numberOfEnemiesOnTheMap.Value <= 0)
         {
-            return;
-        }
-
-        if (!self.InfinitelySpawning)
-        {
-            self.StopSpawnAfterWaveAndReset();
-            return;
-        }
-
-        if (TagManager.instance.CountAllTaggedObjectsWithTag(TagManager.ETag.EnemyOwned) > 0)
-        {
-            return;
-        }
-
-        foreach (var spawn in self.waves[self.Wavenumber].spawns)
-        {
-            spawn.Reset(false);
+            self.waves[self.Wavenumber].ReduceMaxDelayTillNextSpawn();
         }
     }
 
@@ -119,6 +129,16 @@ public class EnemySpawnerPatch
 				? EnemySpawner.instance.groundConstraintLarge
 				: (flying ? EnemySpawner.instance.flyingConstraint : EnemySpawner.instance.groundConstraint));
 
+		// Vanilla god of chaos drags every spawn point toward the castle in a 5 step cycle,
+		// except for exploding enemies. Spawn.godOfChaos is just a cached GodOfChaosEquipped.
+		if (PerkManager.instance.GodOfChaosEquipped && !tags.Contains(TagManager.ETag.Exploding))
+		{
+			randomPointOnSpawnLine = Vector3.Lerp(
+				randomPointOnSpawnLine,
+				CastleCenter.CastleCenterPosition + (flying ? Vector3.up * 5f : Vector3.zero),
+				self.SpawnedUnits % 5 / 5f);
+		}
+
 		var coins = 0;
 		var spawnedUnits = Traverse.Create(self).Field<int>("spawnedUnits");
 		var goldCoinsPerEnemy = Traverse.Create(self).Field<int[]>("goldCoinsPerEnemy");
@@ -133,20 +153,22 @@ public class EnemySpawnerPatch
 			Spawn = (byte)spawnIndex,
 			Id = (ushort)_nextEnemyId,
 			Position = randomPointOnSpawnLine,
-			Coins = (byte)coins
+			Coins = (byte)coins,
+			Elite = self.eliteEnemies
 		};
 		
 		Plugin.Instance.Network.Send(packet, true);
 		++_nextEnemyId;
     }
 
-    public static void SpawnEnemy(int waveNumber, int spawnIndex, Vector3 position, ushort id, int coins)
+    public static void SpawnEnemy(int waveNumber, int spawnIndex, Vector3 position, ushort id, int coins, bool elite)
     {
-	    var spawn = EnemySpawner.instance.waves[waveNumber].spawns[spawnIndex];
+	    var wave = EnemySpawner.instance.waves[waveNumber];
+	    var spawn = wave.spawns[spawnIndex];
 	    var spawnedUnits = Traverse.Create(spawn).Field<int>("spawnedUnits");
 	    var finished = Traverse.Create(spawn).Field<bool>("finished");
-	    
-	    SpawnEnemy(spawn, position, id, coins);
+
+	    SpawnEnemy(spawn, wave, position, id, coins, elite);
 	    spawnedUnits.Value++;
 	    if (spawnedUnits.Value >= spawn.count)
 	    {
@@ -154,7 +176,7 @@ public class EnemySpawnerPatch
 	    }
     }
 
-    private static GameObject SpawnEnemy(Spawn self, Vector3 position, ushort id, int coins)
+    private static GameObject SpawnEnemy(Spawn self, Wave wave, Vector3 position, ushort id, int coins, bool elite)
     {
 		GameObject gameObject;
 		if (self.spawnLine == self.enemyPrefab.transform)
@@ -187,37 +209,41 @@ public class EnemySpawnerPatch
 
 		var singleHp = gameObject.GetComponentInChildren<Hp>();
 		singleHp.coinCount = coins;
-		
-		var tauntTheTurtle = Traverse.Create(self).Field<bool>("tauntTheTurtle");
-		if (tauntTheTurtle.Value)
+		var tags = gameObject.GetComponentInChildren<TaggedObject>().Tags;
+
+		// The game's own post-spawn pass handles all perk buffs (turtle/tiger/falcon taunts,
+		// anti-air telescope, war gods, growth/range gods) and the elite hp/dmg/material upgrade.
+		Spawn.AdjustEnemyParametersAfterSpawn(gameObject, elite);
+
+		// AdjustEnemyParametersAfterSpawn does not take the per-wave difficulty; vanilla
+		// Spawn.Update folds wave.difficultyMulti into hp and Lerp(1, multi, 0.5) into damage.
+		singleHp.maxHp *= wave.difficultyMulti;
+		singleHp.SetHpToMaxHp();
+
+		var damageMulti = Mathf.Lerp(1f, wave.difficultyMulti, 0.5f);
+		// Vanilla god of chaos forces a 3 second initial attack cooldown on non-exploding enemies.
+		var godOfChaos = PerkManager.instance.GodOfChaosEquipped && !tags.Contains(TagManager.ETag.Exploding);
+		foreach (var attack in gameObject.GetComponentsInChildren<AutoAttack>())
 		{
-			var hpTemp = gameObject.GetComponentInChildren<Hp>();
-			hpTemp.maxHp *= PerkManager.instance.tauntTheTurtle_hpMultiplyer;
-			hpTemp.Heal(float.MaxValue);
+			if (godOfChaos)
+			{
+				attack.SetCooldownTo(3f);
+			}
+
+			attack.DamageMultiplyer *= damageMulti;
 		}
-		
-		var tauntTheTiger = Traverse.Create(self).Field<bool>("tauntTheTiger");
-		if (tauntTheTiger.Value)
+
+		// Vanilla gives every 2nd humanoid a death spawn. Host only: clients replay deaths
+		// through HpSync's gated TakeDamage, so assigning this on a client too would Instantiate
+		// an identifier-less ghost copy there. The host-side death spawn is still unsynced.
+		// TODO(boss-minion-sync follow-up): route death-spawned enemies through a spawn packet
+		// with an Identifier.
+		if (Plugin.Instance.Network.Server
+		    && PerkManager.instance.GodOfAfterlifeEquipped
+		    && self.SpawnedUnits % 2 == 0
+		    && tags.Contains(TagManager.ETag.Humanoid))
 		{
-			foreach (var attack in gameObject.GetComponentsInChildren<AutoAttack>())
-			{
-				attack.DamageMultiplyer *= PerkManager.instance.tauntTheTiger_damageMultiplyer;
-			}
-			
-			foreach (var hp in gameObject.GetComponentsInChildren<Hp>())
-			{
-				hp.DamageMultiplyer *= PerkManager.instance.tauntTheTiger_damageMultiplyer;
-			}
-		}
-		
-		var tauntTheFalcon = Traverse.Create(self).Field<bool>("tauntTheFalcon");
-		if (tauntTheFalcon.Value)
-		{
-			foreach (var pathfindMovementEnemy in gameObject.GetComponentsInChildren<PathfindMovementEnemy>())
-			{
-				pathfindMovementEnemy.movementSpeed *= PerkManager.instance.tauntTheFalcon_speedMultiplyer;
-				pathfindMovementEnemy.agroTimeWhenAttackedByPlayer *= PerkManager.instance.tauntTheFalcon_chasePlayerTimeMultiplyer;
-			}
+			singleHp.enemyToSpawnOnDeath = PerkManager.instance.godOfAfterlifeEnemy;
 		}
 
 		return gameObject;

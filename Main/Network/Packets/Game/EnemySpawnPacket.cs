@@ -12,6 +12,7 @@ public class EnemySpawnPacket : BasePacket
     public ushort Id;
     public Vector3 Position;
     public byte Coins;
+    public bool Elite;
 
     public override PacketId TypeID => PacketID;
     public override Channel Channel => Channel.Game;
@@ -27,6 +28,7 @@ public class EnemySpawnPacket : BasePacket
         writer.Write(Id);
         writer.Write(Position);
         writer.Write(Coins);
+        writer.Write(Elite);
     }
 
     public override void Receive(Buffer reader)
@@ -36,5 +38,6 @@ public class EnemySpawnPacket : BasePacket
         Id = reader.ReadUInt16();
         Position = reader.ReadVector3();
         Coins = reader.ReadByte();
+        Elite = reader.ReadBoolean();
     }
 }
