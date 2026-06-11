@@ -91,6 +91,24 @@ public static class LoadoutFrames
         return null;
     }
 
+    // The first overworld grid frame — where weapon picks happen and the status strip lives.
+    public static UIFrame PrimaryGridFrame
+    {
+        get
+        {
+            Resolve();
+            foreach (var helper in _loadoutHelpers)
+            {
+                if (helper != null && helper.frame != null)
+                {
+                    return helper.frame;
+                }
+            }
+
+            return _levelSelect;
+        }
+    }
+
     public static bool PopupOpen =>
         SceneTransitionManagerPatch.InLevelSelect &&
         UIFrameManager.instance != null &&
