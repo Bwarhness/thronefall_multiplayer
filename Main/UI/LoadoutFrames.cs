@@ -121,6 +121,19 @@ public static class LoadoutFrames
         var ui = UIFrameManager.instance;
         for (var i = 0; i < 4 && ui != null && IsPopupFrame(ui.ActiveFrame); ++i)
         {
+            var helper = HelperFor(ui.ActiveFrame);
+            if (helper != null)
+            {
+                // Closing the grid frame fires ResetLoadoutOnCancel.OnDeactivate, which reverts
+                // CurrentlyEquipped to its on-open snapshot unless the loadout was locked in. A
+                // programmatic (remote/level-start) close must keep the synced selection.
+                var cancel = helper.GetComponentInChildren<ResetLoadoutOnCancel>(true);
+                if (cancel != null)
+                {
+                    cancel.LockInLoadout();
+                }
+            }
+
             ui.CloseActiveFrame();
         }
     }

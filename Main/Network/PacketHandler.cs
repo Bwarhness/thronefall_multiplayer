@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using Steamworks;
 using ThronefallMP.Components;
@@ -210,7 +211,8 @@ public static class PacketHandler
     private static void HandleLoadoutOpen(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (LoadoutOpenPacket)ipacket;
-        if (!SceneTransitionManagerPatch.InLevelSelect || LevelSelectManager.instance == null)
+        if (!SceneTransitionManagerPatch.InLevelSelect || LevelSelectManager.instance == null ||
+            UIFrameManager.instance == null)
         {
             return;
         }
@@ -242,14 +244,24 @@ public static class PacketHandler
                     return;
                 }
 
-                // Open on a DIFFERENT level (simultaneous-open race): rebuild for the arbitrated level.
-                // Close+reopen completes inside this one call, so the polling watcher sees no edge —
-                // set only SuppressNextDiff (the rebuilt frame's OnShow can mutate the selection).
-                // Best-effort: the race window is a frame or two of simultaneous opens.
+                // Open on a DIFFERENT level (possible with mixed progression, not just a race):
+                // rebuild for the arbitrated level. Close the whole family so the reopen genuinely
+                // re-shows the level-select frame (CloseActiveFrame alone pops grid->level-select and
+                // ForceOpenLevelSelect would early-return, leaving the old level's title/buttons).
+                // The close+reopen completes inside this call — no UI edge — so set only
+                // SuppressNextDiff (the reopen's OnShow can mutate the selection).
                 LevelInteractor.lastActiveLevelInfo = interactor.levelInfo;
                 LoadoutState.SuppressNextDiff = true;
-                ui.CloseActiveFrame();
+                LoadoutFrames.CloseAllPopupFrames();
                 UIFrameManager.ForceOpenLevelSelect();
+                if (Plugin.Instance.Network.Server)
+                {
+                    // The relay excludes the original sender, so when two machines opened different
+                    // levels their Open packets cross and they end up swapped. A fresh host-origin
+                    // packet reaches everyone (same-level receivers no-op), converging on the host's
+                    // adopted level.
+                    Plugin.Instance.Network.Send(new LoadoutOpenPacket { Scene = packet.Scene });
+                }
                 return;
             }
 
@@ -257,6 +269,11 @@ public static class PacketHandler
             LoadoutState.RemoteOpenPending = true;
             LevelInteractor.lastActiveLevelInfo = interactor.levelInfo;
             UIFrameManager.ForceOpenLevelSelect();
+            if (!LoadoutFrames.PopupOpen)
+            {
+                // The frame didn't actually open (unexpected active frame) — don't leak the flag.
+                LoadoutState.RemoteOpenPending = false;
+            }
             return;
         }
 
@@ -266,10 +283,12 @@ public static class PacketHandler
     private static void HandleLoadoutSelection(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (LoadoutSelectionPacket)ipacket;
-        if (PerkManager.instance == null || !SceneTransitionManagerPatch.InLevelSelect)
+        if (PerkManager.instance == null || !SceneTransitionManagerPatch.InLevelSelect || !LoadoutFrames.PopupOpen)
         {
             // Never rewrite the live perk set mid-level (a toggle relayed during the level-start race
-            // would otherwise strip and re-add perks during gameplay).
+            // would otherwise strip and re-add perks during gameplay). Likewise a machine whose popup
+            // isn't open (it ignored the Open: locked level / different scene) must not have its
+            // session-persistent loadout silently rewritten by remote toggles.
             return;
         }
 
@@ -283,6 +302,7 @@ public static class PacketHandler
             }
         }
 
+        var requested = new List<Equipment>();
         foreach (var item in packet.Selection)
         {
             if (item == Equipment.Invalid || Equip.Weapons.Contains(item) || Equip.Convert(item) == null)
@@ -292,6 +312,7 @@ public static class PacketHandler
             }
 
             Equip.EquipEquipment(item);
+            requested.Add(item);
         }
 
         LoadoutState.SuppressNextDiff = true;
@@ -299,12 +320,38 @@ public static class PacketHandler
         // The grid caches per-button state (TFUIEquippable.selectedForLoadout is only written on user
         // input, not derived per frame), so a remotely-applied selection must force a rebuild or the
         // visuals — and the max-perk eviction that reads them — go stale. OnShow destroys and rebuilds.
+        // OnShow can itself clamp the selection (locked items, perk-count limits, weapon auto-equip);
+        // when it does, the clamped result must NOT be suppressed — letting the watcher diff it
+        // broadcasts the correction (the clamp is idempotent, so this converges instead of looping).
         var active = UIFrameManager.instance != null ? UIFrameManager.instance.ActiveFrame : null;
         var helper = LoadoutFrames.HelperFor(active);
         if (helper != null)
         {
             helper.OnShow();
+            var applied = CaptureNonWeaponSelection();
+            requested.Sort();
+            if (!applied.SequenceEqual(requested))
+            {
+                LoadoutState.SuppressNextDiff = false;
+            }
         }
+    }
+
+    // The non-weapon part of CurrentlyEquipped, sorted (mirrors the LoadoutWatcher's Capture filter).
+    private static List<Equipment> CaptureNonWeaponSelection()
+    {
+        var selection = new List<Equipment>();
+        foreach (var item in PerkManager.instance.CurrentlyEquipped)
+        {
+            var equipment = Equip.Convert(item.name);
+            if (equipment != Equipment.Invalid && !Equip.Weapons.Contains(equipment))
+            {
+                selection.Add(equipment);
+            }
+        }
+
+        selection.Sort();
+        return selection;
     }
 
     private static void HandleLoadoutWeapon(SteamNetworkingIdentity sender, BasePacket ipacket)

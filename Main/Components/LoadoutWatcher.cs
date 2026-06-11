@@ -56,7 +56,12 @@ public class LoadoutWatcher : MonoBehaviour
         {
             BroadcastOpen(network);
             BroadcastSelection(network);
-            BroadcastWeapon(network);
+            // The packet carries PlayerId, so the host can speak for everyone — re-send every known
+            // pick, not just its own, or the joiner's strip misses the other clients' weapons.
+            foreach (var pick in LoadoutState.WeaponPicks)
+            {
+                network.Send(new LoadoutWeaponPacket { PlayerId = pick.Key, Weapon = pick.Value });
+            }
         }
         _lastPlayerCount = playerCount;
 
@@ -115,6 +120,10 @@ public class LoadoutWatcher : MonoBehaviour
         UpdateStrip();
     }
 
+    // ESC semantics: a local ESC from the grid only pops back to the level-select frame — no close
+    // edge, no packet — and the vanilla cancel-revert that fires then is diff-broadcast like any local
+    // edit, so "revert wins for all". Remote closes lock the loadout in first (LoadoutFrames) and
+    // revert nothing.
     private void OnClosed(Network.Network network)
     {
         if (LoadoutState.RemoteClosePending)
@@ -128,6 +137,9 @@ public class LoadoutWatcher : MonoBehaviour
 
         LoadoutStatusStrip.Hide();
         LoadoutState.WeaponPicks.Clear();
+        // The close path never reaches the suppress block, so a flag set by HandleLoadoutClose would
+        // otherwise leak into the next open.
+        LoadoutState.SuppressNextDiff = false;
     }
 
     private void BroadcastOpen(Network.Network network)
