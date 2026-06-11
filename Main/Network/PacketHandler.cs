@@ -73,6 +73,10 @@ public static class PacketHandler
         { PeerListPacket.PacketID, HandlePeerList },
         
         { BossSpawnPacket.PacketID, HandleBossSpawn },
+        { LoadoutOpenPacket.PacketID, HandleLoadoutOpen },
+        { LoadoutSelectionPacket.PacketID, HandleLoadoutSelection },
+        { LoadoutWeaponPacket.PacketID, HandleLoadoutWeapon },
+        { LoadoutClosePacket.PacketID, HandleLoadoutClose },
         { DamageFeedbackPacket.PacketID, HandleDamageFeedback },
         { DayNightPacket.PacketID, HandleDayNight },
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
@@ -201,6 +205,102 @@ public static class PacketHandler
         // Spawns the minion with its authoritative Identifier id and advances the Spawn's
         // spawnedUnits/finished bookkeeping so the boss' wave loop terminates on this peer too.
         EnemySpawnerPatch.SpawnEnemy(spawn, packet.DifficultyMulti, packet.Position, packet.Id, packet.Coins, packet.Elite);
+    }
+
+    private static void HandleLoadoutOpen(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        var packet = (LoadoutOpenPacket)ipacket;
+        if (!SceneTransitionManagerPatch.InLevelSelect || LevelSelectManager.instance == null)
+        {
+            return;
+        }
+
+        var interactors = Traverse.Create(LevelSelectManager.instance)
+            .Field<LevelInteractor[]>("levelInteractors").Value;
+        foreach (var interactor in interactors)
+        {
+            if (interactor.levelInfo.sceneName != packet.Scene)
+            {
+                continue;
+            }
+
+            var ui = UIFrameManager.instance;
+            var levelSelectFrame = Traverse.Create(ui).Field<UIFrame>("levelSelectFrame").Value;
+            if (ui.ActiveFrame == levelSelectFrame && LevelInteractor.lastActiveLevelInfo != interactor.levelInfo)
+            {
+                // Popup already open on a DIFFERENT level (simultaneous-open race): close it so the re-open
+                // below rebuilds the frame for the arbitrated level. ForceOpen alone would early-return.
+                LoadoutState.RemoteClosePending = true;
+                ui.CloseActiveFrame();
+            }
+
+            // Replicate vanilla LevelInteractor.InteractionBegin for this level.
+            LoadoutState.RemoteOpenPending = true;
+            LevelInteractor.lastActiveLevelInfo = interactor.levelInfo;
+            UIFrameManager.ForceOpenLevelSelect();
+            return;
+        }
+
+        Plugin.Log.LogInfo($"LoadoutOpen for unknown level '{packet.Scene}', ignoring");
+    }
+
+    private static void HandleLoadoutSelection(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        var packet = (LoadoutSelectionPacket)ipacket;
+        if (PerkManager.instance == null)
+        {
+            return;
+        }
+
+        // Replace the non-weapon portion of CurrentlyEquipped; keep the local player's weapon entries untouched.
+        var equipped = PerkManager.instance.CurrentlyEquipped;
+        for (var i = equipped.Count - 1; i >= 0; --i)
+        {
+            if (!Equip.Weapons.Contains(Equip.Convert(equipped[i].name)))
+            {
+                equipped.RemoveAt(i);
+            }
+        }
+
+        foreach (var item in packet.Selection)
+        {
+            if (item != Equipment.Invalid && !Equip.Weapons.Contains(item))
+            {
+                Equip.EquipEquipment(item);
+            }
+        }
+
+        LoadoutState.SuppressNextDiff = true;
+    }
+
+    private static void HandleLoadoutWeapon(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        var packet = (LoadoutWeaponPacket)ipacket;
+        if (packet.PlayerId == Plugin.Instance.PlayerManager.LocalId)
+        {
+            // Our own pick echoed back by the host relay; the watcher already stored it.
+            return;
+        }
+
+        LoadoutState.WeaponPicks[packet.PlayerId] = packet.Weapon;
+    }
+
+    private static void HandleLoadoutClose(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        if (!SceneTransitionManagerPatch.InLevelSelect || UIFrameManager.instance == null)
+        {
+            return;
+        }
+
+        var ui = UIFrameManager.instance;
+        var levelSelectFrame = Traverse.Create(ui).Field<UIFrame>("levelSelectFrame").Value;
+        if (ui.ActiveFrame == levelSelectFrame)
+        {
+            LoadoutState.RemoteClosePending = true;
+            ui.CloseActiveFrame();
+        }
+
+        LoadoutState.WeaponPicks.Clear();
     }
 
     private static void HandlePlayerTeleport(SteamNetworkingIdentity sender, BasePacket ipacket)

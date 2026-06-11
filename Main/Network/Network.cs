@@ -493,6 +493,10 @@ public class Network : MonoBehaviour
         { SyncResourcePacket.PacketID, typeof(SyncResourcePacket) },
         
         { BossSpawnPacket.PacketID, typeof(BossSpawnPacket) },
+        { LoadoutOpenPacket.PacketID, typeof(LoadoutOpenPacket) },
+        { LoadoutSelectionPacket.PacketID, typeof(LoadoutSelectionPacket) },
+        { LoadoutWeaponPacket.PacketID, typeof(LoadoutWeaponPacket) },
+        { LoadoutClosePacket.PacketID, typeof(LoadoutClosePacket) },
         { CombinedPacket.PacketID, typeof(CombinedPacket) },
         { DamageFeedbackPacket.PacketID, typeof(DamageFeedbackPacket) },
         { DayNightPacket.PacketID, typeof(DayNightPacket) },
