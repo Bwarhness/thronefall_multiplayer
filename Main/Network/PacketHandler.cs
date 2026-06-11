@@ -224,14 +224,33 @@ public static class PacketHandler
                 continue;
             }
 
-            var ui = UIFrameManager.instance;
-            var levelSelectFrame = Traverse.Create(ui).Field<UIFrame>("levelSelectFrame").Value;
-            if (ui.ActiveFrame == levelSelectFrame && LevelInteractor.lastActiveLevelInfo != interactor.levelInfo)
+            if (!interactor.CanBePlayed)
             {
-                // Popup already open on a DIFFERENT level (simultaneous-open race): close it so the re-open
-                // below rebuilds the frame for the arbitrated level. ForceOpen alone would early-return.
-                LoadoutState.RemoteClosePending = true;
+                // Vanilla InteractionBegin refuses locked levels; progress can differ per machine.
+                Plugin.Log.LogInfo($"LoadoutOpen for locked level '{packet.Scene}', ignoring");
+                return;
+            }
+
+            var ui = UIFrameManager.instance;
+            if (LoadoutFrames.IsPopupFrame(ui.ActiveFrame))
+            {
+                if (LevelInteractor.lastActiveLevelInfo == interactor.levelInfo)
+                {
+                    // Already open on the same level (simultaneous open). No UI edge will occur, so the
+                    // pending flags must NOT be set — they would leak and misclassify the next genuine
+                    // local open as remote.
+                    return;
+                }
+
+                // Open on a DIFFERENT level (simultaneous-open race): rebuild for the arbitrated level.
+                // Close+reopen completes inside this one call, so the polling watcher sees no edge —
+                // set only SuppressNextDiff (the rebuilt frame's OnShow can mutate the selection).
+                // Best-effort: the race window is a frame or two of simultaneous opens.
+                LevelInteractor.lastActiveLevelInfo = interactor.levelInfo;
+                LoadoutState.SuppressNextDiff = true;
                 ui.CloseActiveFrame();
+                UIFrameManager.ForceOpenLevelSelect();
+                return;
             }
 
             // Replicate vanilla LevelInteractor.InteractionBegin for this level.
@@ -247,8 +266,10 @@ public static class PacketHandler
     private static void HandleLoadoutSelection(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (LoadoutSelectionPacket)ipacket;
-        if (PerkManager.instance == null)
+        if (PerkManager.instance == null || !SceneTransitionManagerPatch.InLevelSelect)
         {
+            // Never rewrite the live perk set mid-level (a toggle relayed during the level-start race
+            // would otherwise strip and re-add perks during gameplay).
             return;
         }
 
@@ -264,13 +285,26 @@ public static class PacketHandler
 
         foreach (var item in packet.Selection)
         {
-            if (item != Equipment.Invalid && !Equip.Weapons.Contains(item))
+            if (item == Equipment.Invalid || Equip.Weapons.Contains(item) || Equip.Convert(item) == null)
             {
-                Equip.EquipEquipment(item);
+                // Convert == null: unknown value from the wire — equipping it would throw deeper in.
+                continue;
             }
+
+            Equip.EquipEquipment(item);
         }
 
         LoadoutState.SuppressNextDiff = true;
+
+        // The grid caches per-button state (TFUIEquippable.selectedForLoadout is only written on user
+        // input, not derived per frame), so a remotely-applied selection must force a rebuild or the
+        // visuals — and the max-perk eviction that reads them — go stale. OnShow destroys and rebuilds.
+        var active = UIFrameManager.instance != null ? UIFrameManager.instance.ActiveFrame : null;
+        var helper = LoadoutFrames.HelperFor(active);
+        if (helper != null)
+        {
+            helper.OnShow();
+        }
     }
 
     private static void HandleLoadoutWeapon(SteamNetworkingIdentity sender, BasePacket ipacket)
@@ -278,7 +312,8 @@ public static class PacketHandler
         var packet = (LoadoutWeaponPacket)ipacket;
         if (packet.PlayerId == Plugin.Instance.PlayerManager.LocalId)
         {
-            // Our own pick echoed back by the host relay; the watcher already stored it.
+            // Defensive: the relay excludes the sender, so this only fires via handleLocal sends or a
+            // spoofed PlayerId — the local pick is already authoritative in WeaponPicks.
             return;
         }
 
@@ -292,12 +327,13 @@ public static class PacketHandler
             return;
         }
 
-        var ui = UIFrameManager.instance;
-        var levelSelectFrame = Traverse.Create(ui).Field<UIFrame>("levelSelectFrame").Value;
-        if (ui.ActiveFrame == levelSelectFrame)
+        if (LoadoutFrames.IsPopupFrame(UIFrameManager.instance.ActiveFrame))
         {
             LoadoutState.RemoteClosePending = true;
-            ui.CloseActiveFrame();
+            // Closing can revert the loadout to its on-open snapshot (ResetLoadoutOnCancel); the
+            // re-snapshot guard keeps the watcher from broadcasting that revert as a local edit.
+            LoadoutState.SuppressNextDiff = true;
+            LoadoutFrames.CloseAllPopupFrames();
         }
 
         LoadoutState.WeaponPicks.Clear();

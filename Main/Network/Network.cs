@@ -280,6 +280,9 @@ public class Network : MonoBehaviour
     private void CloseLobby()
     {
         SyncManager.ResetSyncs();
+        // WeaponPicks would otherwise survive into the next session while player ids are regenerated,
+        // polluting the next level-start weapon pre-fill with stale picks.
+        LoadoutState.Reset();
         if (PacketHandler.AwaitingConnectionApproval)
         {
             UIManager.LobbyListPanel.CloseConnectingDialog();
