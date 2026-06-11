@@ -239,6 +239,12 @@ public class LevelDataSync : BaseSync
         foreach (var weapon in _activeRequest.SelectedWeapons)
         {
             var player = Plugin.Instance.PlayerManager.Get(weapon.Key);
+            if (player == null)
+            {
+                // A pick can outlive its player (disconnect while the loadout popup was open).
+                continue;
+            }
+
             player.Weapon = weapon.Value;
             if (player.Id == Plugin.Instance.PlayerManager.LocalId)
             {

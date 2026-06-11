@@ -65,22 +65,9 @@ public class LoadoutWatcher : MonoBehaviour
         }
         _lastPlayerCount = playerCount;
 
-        if (LoadoutState.SuppressNextDiff)
-        {
-            // A remote selection was just applied; re-snapshot without treating it as a local edit.
-            CaptureSnapshot();
-            LoadoutState.SuppressNextDiff = false;
-            UpdateStrip();
-            return;
-        }
-
-        // Diff local state against the snapshot and broadcast local edits.
+        // A local weapon click must never be absorbed by the selection-suppress below — remote
+        // selections never touch weapon entries, so the weapon diff always runs.
         var (selection, weapon) = Capture();
-        if (!selection.SequenceEqual(_selectionSnapshot))
-        {
-            _selectionSnapshot = selection;
-            network.Send(new LoadoutSelectionPacket { Selection = new List<Equipment>(selection) });
-        }
         if (weapon != _weaponSnapshot)
         {
             _weaponSnapshot = weapon;
@@ -90,6 +77,21 @@ public class LoadoutWatcher : MonoBehaviour
                 PlayerId = Plugin.Instance.PlayerManager.LocalId,
                 Weapon = weapon
             });
+        }
+
+        if (LoadoutState.SuppressNextDiff)
+        {
+            // A remote selection was just applied; re-snapshot without treating it as a local edit.
+            _selectionSnapshot = selection;
+            LoadoutState.SuppressNextDiff = false;
+            UpdateStrip();
+            return;
+        }
+
+        if (!selection.SequenceEqual(_selectionSnapshot))
+        {
+            _selectionSnapshot = selection;
+            network.Send(new LoadoutSelectionPacket { Selection = new List<Equipment>(selection) });
         }
 
         UpdateStrip();
