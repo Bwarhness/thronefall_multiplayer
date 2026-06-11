@@ -56,6 +56,10 @@ public enum PacketId
     Victory,
     LockTarget,
     BossSpawn,
+    LoadoutOpen,
+    LoadoutSelection,
+    LoadoutWeapon,
+    LoadoutClose,
 }
 
 public static class PacketHandler
