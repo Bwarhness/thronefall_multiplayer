@@ -48,6 +48,7 @@ namespace ThronefallMP
             Instance = this;
             TextureRepository = new TextureRepository();
             Network = Instance.gameObject.AddComponent<Network.Network>();
+            gameObject.AddComponent<Components.LoadoutWatcher>();
             PlayerManager = new Network.PlayerManager();
             CheatHandler = new CheatHandler();
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
