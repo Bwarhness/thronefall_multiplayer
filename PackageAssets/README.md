@@ -30,6 +30,14 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.0 (community update)
+* New: shared loadout screen. Opening a level's popup now opens it for every player; perks and mutators are
+  selected together in real time; each player picks their own weapon right in the popup and everyone can see
+  the picks in a status strip; the level starts once everybody has a weapon (your last-used weapon counts as
+  your pick, so returning players don't have to re-click). The old mid-overworld weapon dialog only appears
+  for flows that skip the popup (e.g. "Continue").
+* Both players must be on 1.1.0 (the multiplayer version check will refuse mismatched builds).
+
 #### 1.0.11 (community update)
 * Retrying a day after a defeat ("Try again") no longer wipes the shared gold — everyone now starts the
   retried day with the money they had at dawn. (The shared balance is now stored in the per-day autosave.)
