@@ -168,15 +168,31 @@ public class LevelDataSync : BaseSync
             }
         }
 
-        Plugin.Log.LogInfo("Sending weapon request.");
-        var sentByServer = peer == Plugin.Instance.PlayerManager.LocalPlayer.SteamID;
-        var request = new WeaponRequestPacket();
-        Plugin.Instance.Network.Send(
-            request,
-            !sentByServer,
-            peer
-        );
-        
+        // Pre-fill weapon picks made in the shared loadout popup so the legacy weapon-request dialog is
+        // skipped. (The popup's Start gate guarantees picks exist for popup-initiated starts; the dialog
+        // below remains as a fallback for start paths that bypass the popup, e.g. the Continue button.)
+        foreach (var pick in LoadoutState.WeaponPicks)
+        {
+            if (pick.Value != Equipment.Invalid && !_activeRequest.SelectedWeapons.ContainsKey(pick.Key))
+            {
+                _activeRequest.SelectedWeapons[pick.Key] = pick.Value;
+            }
+        }
+
+        var allPicked = Plugin.Instance.PlayerManager.GetAllPlayers()
+            .All(p => _activeRequest.SelectedWeapons.ContainsKey(p.Id));
+        if (!allPicked)
+        {
+            Plugin.Log.LogInfo("Sending weapon request.");
+            var sentByServer = peer == Plugin.Instance.PlayerManager.LocalPlayer.SteamID;
+            var request = new WeaponRequestPacket();
+            Plugin.Instance.Network.Send(
+                request,
+                !sentByServer,
+                peer
+            );
+        }
+
         Plugin.Instance.StartCoroutine(RequestHandler());
     }
 
