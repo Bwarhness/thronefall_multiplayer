@@ -75,7 +75,51 @@ public enum Equipment
     
     NoWallsPact,
     NoTowersPact,
-    NoUnitsPact
+    NoUnitsPact,
+
+    // 2024+ game additions (appended only — enum order is the wire format).
+    // Weapons
+    BattleAxe,
+    BloodWand,
+    CursedBlowpipe,
+    FalchionAndTrap,
+    // Perks
+    AgileHorse,
+    AncientShrines,
+    Cobbler,
+    DoubleHealing,
+    EliteTowers,
+    EmergencyRepairs,
+    ExperienceGain,
+    ExplosiveRevival,
+    ExplosiveWalls,
+    HealingGold,
+    HealthPotions,
+    Interest,
+    LastStand,
+    LightMaterials,
+    Loan,
+    Outpost,
+    PotionVials,
+    PristineArchers,
+    PristineWarriors,
+    RelentlessResearch,
+    ResilientResidences,
+    RiskTaker,
+    RoyalProtection,
+    SpellScroll,
+    TimberScaffolding,
+    // Tower upgrades
+    TowerArmor,
+    TowerBunker,
+    // Mutators
+    EliteGod,
+    GrowthGod,
+    RangeGod,
+    ChaosGod,
+    AfterlifeGod,
+    ChoiceGod,
+    PacifistPact
 }
 
 public static class Equip
@@ -86,6 +130,10 @@ public static class Equip
         Equipment.LightSpear,
         Equipment.HeavySword,
         Equipment.LightningWand,
+        Equipment.BattleAxe,
+        Equipment.BloodWand,
+        Equipment.CursedBlowpipe,
+        Equipment.FalchionAndTrap,
     };
     
     private static readonly Dictionary<string, Equipment> NameToEquip = new()
@@ -162,10 +210,56 @@ public static class Equip
         { "Taunt God of Destruction", Equipment.Destruction },
         { "Taunt The Cheese God", Equipment.Wasp },
         { "Taunt The Disease God", Equipment.Death },
-        { "Taunt The Phoenix God", Equipment.Phoenix },
+        // The game asset is "Taunt the Phoenix God" (lowercase "the") — the original "Taunt The
+        // Phoenix God" key never matched anything.
+        { "Taunt the Phoenix God", Equipment.Phoenix },
         { "No Walls Pact", Equipment.NoWallsPact },
         { "No Towers Pact", Equipment.NoTowersPact },
         { "No Units Pact", Equipment.NoUnitsPact },
+
+        // 2024+ game additions (asset names taken from a live allEquippables dump).
+        // Weapons
+        { "Battle Axe", Equipment.BattleAxe },
+        { "Blood Wand", Equipment.BloodWand },
+        { "Cursed Blowpipe", Equipment.CursedBlowpipe },
+        { "Falchion and Trap", Equipment.FalchionAndTrap },
+        // Perks
+        { "Agile Horse", Equipment.AgileHorse },
+        { "Ancient Shrines", Equipment.AncientShrines },
+        { "Cobbler", Equipment.Cobbler },
+        { "Double Healing", Equipment.DoubleHealing },
+        { "Elite Towers", Equipment.EliteTowers },
+        { "Emergency Repairs", Equipment.EmergencyRepairs },
+        { "Experience Gain", Equipment.ExperienceGain },
+        { "Explosive Revival", Equipment.ExplosiveRevival },
+        { "Explosive Walls", Equipment.ExplosiveWalls },
+        { "Healing Gold", Equipment.HealingGold },
+        { "Health Potions", Equipment.HealthPotions },
+        { "Interest", Equipment.Interest },
+        { "Last Stand", Equipment.LastStand },
+        { "Light Materials", Equipment.LightMaterials },
+        { "Loan", Equipment.Loan },
+        { "Outpost", Equipment.Outpost },
+        { "Potion Vials", Equipment.PotionVials },
+        { "Pristine Archers", Equipment.PristineArchers },
+        { "Pristine Warriors", Equipment.PristineWarriors },
+        { "Relentless Research", Equipment.RelentlessResearch },
+        { "Resilient Residences", Equipment.ResilientResidences },
+        { "Risk Taker", Equipment.RiskTaker },
+        { "Royal Protection", Equipment.RoyalProtection },
+        { "Spell Scroll", Equipment.SpellScroll },
+        { "Timber Scaffolding", Equipment.TimberScaffolding },
+        // Tower upgrades
+        { "TowerArmor", Equipment.TowerArmor },
+        { "TowerBunker", Equipment.TowerBunker },
+        // Mutators
+        { "Challenge the Elite God", Equipment.EliteGod },
+        { "Challenge the Growth God", Equipment.GrowthGod },
+        { "Challenge the Range God", Equipment.RangeGod },
+        { "Challenge the God of Chaos", Equipment.ChaosGod },
+        { "Challenge the God of Afterlife", Equipment.AfterlifeGod },
+        { "Challenge the God of Choice", Equipment.ChoiceGod },
+        { "Pacifist Pact", Equipment.PacifistPact },
     };
     
     private static readonly Dictionary<Equipment, Equippable> EquipmentToEquippable = new();
