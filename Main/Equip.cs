@@ -182,6 +182,16 @@ public static class Equip
         {
             var equipment = Convert(meta.reward.name);
             Plugin.Log.LogInfoFiltered("Equipment", $"- {equipment} = {meta.reward.name}");
+            if (equipment == Equipment.Invalid)
+            {
+                // An unmapped equippable must NOT occupy the Invalid slot: every unknown would
+                // overwrite it, and any Invalid that reaches EquipEquipment would silently equip
+                // whichever unknown perk registered last (e.g. picking Resilient Residence handed
+                // out Last Stand). Unmapped perks stay unsyncable until added to NameToEquip.
+                Plugin.Log.LogWarning($"Equippable '{meta.reward.name}' is not in the equipment table");
+                continue;
+            }
+
             EquipmentToEquippable[equipment] = meta.reward;
             EquippableToEquipment[meta.reward] = equipment;
         }
@@ -193,6 +203,12 @@ public static class Equip
         {
             var equipment = Convert(unlocked.name);
             Plugin.Log.LogInfoFiltered("Equipment", $"- {equipment} = {unlocked.name}");
+            if (equipment == Equipment.Invalid)
+            {
+                Plugin.Log.LogWarning($"Equippable '{unlocked.name}' is not in the equipment table");
+                continue;
+            }
+
             EquipmentToEquippable[equipment] = unlocked;
             EquippableToEquipment[unlocked] = equipment;
         }
@@ -210,9 +226,17 @@ public static class Equip
         {
             InitializeDictionaries();
         }
-        
-        Plugin.Log.LogInfoFiltered("Equipment", $"Equipping {equipment} -> {EquipmentToEquippable[equipment].displayName}");
-        PerkManager.instance.CurrentlyEquipped.Add(EquipmentToEquippable[equipment]);
+
+        if (!EquipmentToEquippable.TryGetValue(equipment, out var equippable))
+        {
+            // Invalid (an unmapped perk) or a value from a newer peer — equipping via the raw
+            // indexer would either throw or hand out an arbitrary perk.
+            Plugin.Log.LogWarning($"Cannot equip unknown equipment '{equipment}', skipping");
+            return;
+        }
+
+        Plugin.Log.LogInfoFiltered("Equipment", $"Equipping {equipment} -> {equippable.displayName}");
+        PerkManager.instance.CurrentlyEquipped.Add(equippable);
     }
     
     public static Equipment Convert(Equippable equip)
