@@ -49,9 +49,29 @@ public static class GateOpenerPatch
         {
             original(self);
         }
+        catch (System.Exception e)
+        {
+            // Still throws with the lists sanitized — most likely the door transform refs dying when
+            // the gate's wall is upgraded (mesh swap). Log the gate's state once instead of flooding;
+            // the gate simply doesn't animate while broken.
+            if (_loggedGates.Add(self.GetInstanceID()))
+            {
+                var t = Traverse.Create(self);
+                var doorL = t.Field<UnityEngine.Transform>("doorL").Value;
+                var doorR = t.Field<UnityEngine.Transform>("doorR").Value;
+                Plugin.Log.LogWarning(
+                    $"[GateDiag] {e.GetType().Name} in gate '{self.gameObject.name}' " +
+                    $"mode={t.Field("mode").GetValue()} open={t.Field("open").GetValue()} " +
+                    $"doorL={(doorL != null ? "ok" : "null/destroyed")} " +
+                    $"doorR={(doorR != null ? "ok" : "null/destroyed")} " +
+                    $"players={(tm.Players != null ? tm.Players.Count : -1)} units={safeUnits.Count}: {e.Message}");
+            }
+        }
         finally
         {
             bufferedPlayerUnits.Value = savedBuffer;
         }
     }
+
+    private static readonly HashSet<int> _loggedGates = new();
 }
