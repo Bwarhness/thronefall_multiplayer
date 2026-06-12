@@ -30,6 +30,14 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.3 (community update)
+* Fixed picking certain perks giving you a DIFFERENT perk in multiplayer (e.g. Resilient Residences turning
+  into Last Stand): every perk, weapon, mutator and tower upgrade added to the game since 2023 was missing
+  from the mod's sync table — all 38 are now mapped, including the four newer weapons (Battle Axe, Blood
+  Wand, Cursed Blowpipe, Falchion and Trap) and the "Challenge the..." mutators.
+* The "Taunt the Phoenix God" mutator now actually syncs (a name mismatch made it silently inert in MP).
+* Both players must be on 1.1.3.
+
 #### 1.1.2 (community update)
 * **Both players must be on 1.1.2** — the wire format changed.
 * New: joining players can now select the same loadout items (perks, weapons, mutators) as the host for the
