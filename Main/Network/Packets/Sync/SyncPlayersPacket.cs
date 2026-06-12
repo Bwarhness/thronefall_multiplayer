@@ -37,6 +37,10 @@ public class SyncPlayersPacket : BasePacket
             writer.Write(data.Shared.CallNightFill);
             writer.Write(data.Shared.CommandUnitsButton);
             writer.Write(data.Shared.Slowed);
+            writer.Write(data.Shared.SelectAllArmy);
+            writer.Write(data.Shared.SelectAllMelee);
+            writer.Write(data.Shared.SelectAllRanged);
+            writer.Write(data.Shared.SelectAllHeroes);
         }
     }
 
@@ -61,7 +65,11 @@ public class SyncPlayersPacket : BasePacket
                     CallNightButton = reader.ReadBoolean(),
                     CallNightFill = reader.ReadFloat(),
                     CommandUnitsButton = reader.ReadBoolean(),
-                    Slowed = reader.ReadBoolean()
+                    Slowed = reader.ReadBoolean(),
+                    SelectAllArmy = reader.ReadBoolean(),
+                    SelectAllMelee = reader.ReadBoolean(),
+                    SelectAllRanged = reader.ReadBoolean(),
+                    SelectAllHeroes = reader.ReadBoolean()
                 },
             });
         }

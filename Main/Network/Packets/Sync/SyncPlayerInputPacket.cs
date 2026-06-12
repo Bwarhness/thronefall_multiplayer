@@ -26,6 +26,10 @@ public class SyncPlayerInputPacket : BasePacket
         writer.Write(Data.CallNightButton);
         writer.Write(Data.CommandUnitsButton);
         writer.Write(Data.Slowed);
+        writer.Write(Data.SelectAllArmy);
+        writer.Write(Data.SelectAllMelee);
+        writer.Write(Data.SelectAllRanged);
+        writer.Write(Data.SelectAllHeroes);
     }
 
     public override void Receive(Buffer reader)
@@ -39,5 +43,9 @@ public class SyncPlayerInputPacket : BasePacket
         Data.CallNightButton = reader.ReadBoolean();
         Data.CommandUnitsButton = reader.ReadBoolean();
         Data.Slowed = reader.ReadBoolean();
+        Data.SelectAllArmy = reader.ReadBoolean();
+        Data.SelectAllMelee = reader.ReadBoolean();
+        Data.SelectAllRanged = reader.ReadBoolean();
+        Data.SelectAllHeroes = reader.ReadBoolean();
     }
 }

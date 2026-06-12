@@ -19,7 +19,11 @@ public class PlayerNetworkData : MonoBehaviour
         public float CallNightFill;
         public bool CommandUnitsButton;
         public bool Slowed;
-        
+        public bool SelectAllArmy;
+        public bool SelectAllMelee;
+        public bool SelectAllRanged;
+        public bool SelectAllHeroes;
+
         public void Set(Shared a)
         {
             MoveHorizontal = a.MoveHorizontal;
@@ -31,6 +35,10 @@ public class PlayerNetworkData : MonoBehaviour
             CallNightFill = a.CallNightFill;
             CommandUnitsButton = a.CommandUnitsButton;
             Slowed = a.Slowed;
+            SelectAllArmy = a.SelectAllArmy;
+            SelectAllMelee = a.SelectAllMelee;
+            SelectAllRanged = a.SelectAllRanged;
+            SelectAllHeroes = a.SelectAllHeroes;
         }
 
         public bool Compare(Shared b)
@@ -43,7 +51,11 @@ public class PlayerNetworkData : MonoBehaviour
                 && CallNightButton == b.CallNightButton
                 && Math.Abs(CallNightFill - b.CallNightFill) < Helpers.Epsilon
                 && CommandUnitsButton == b.CommandUnitsButton
-                && Slowed == b.Slowed;
+                && Slowed == b.Slowed
+                && SelectAllArmy == b.SelectAllArmy
+                && SelectAllMelee == b.SelectAllMelee
+                && SelectAllRanged == b.SelectAllRanged
+                && SelectAllHeroes == b.SelectAllHeroes;
         }
     }
     
@@ -60,6 +72,10 @@ public class PlayerNetworkData : MonoBehaviour
     public bool PlayerScepterInteractLast { get; set; }
     public bool CallNightLast { get; set; }
     public bool CommandUnitsButtonLast { get; set; }
+    public bool SelectAllArmyLast { get; set; }
+    public bool SelectAllMeleeLast { get; set; }
+    public bool SelectAllRangedLast { get; set; }
+    public bool SelectAllHeroesLast { get; set; }
 
     private void Update()
     {
@@ -78,5 +94,11 @@ public class PlayerNetworkData : MonoBehaviour
         SharedData.CallNightButton = !frozen && input.GetButton("Call Night");
         SharedData.CallNightFill = frozen ? 0f : Traverse.Create(NightCall.instance).Field<float>("currentFill").Value;
         SharedData.CommandUnitsButton = !frozen && input.GetButton("Command Units");
+        // Group-select hotkeys (1/2/3/4). Held state rather than GetButtonDown: the input sync sends
+        // state changes, and the receiving side edge-detects via the *Last fields.
+        SharedData.SelectAllArmy = !frozen && input.GetButton("Select All Army");
+        SharedData.SelectAllMelee = !frozen && input.GetButton("Select All Melee");
+        SharedData.SelectAllRanged = !frozen && input.GetButton("Select All Ranged");
+        SharedData.SelectAllHeroes = !frozen && input.GetButton("Select All Heroes");
     }
 }

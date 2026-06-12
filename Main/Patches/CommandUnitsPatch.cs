@@ -58,6 +58,99 @@ public static class CommandUnitsPatch
         {
             self.rangeIndicator.Deactivate();
         }
+
+        // Updated AFTER both handlers so each consumes the rising edge exactly once.
+        data.SelectAllArmyLast = data.SharedData.SelectAllArmy;
+        data.SelectAllMeleeLast = data.SharedData.SelectAllMelee;
+        data.SelectAllRangedLast = data.SharedData.SelectAllRanged;
+        data.SelectAllHeroesLast = data.SharedData.SelectAllHeroes;
+    }
+
+    private static bool GroupKeyPressed(PlayerNetworkData data)
+    {
+        return (data.SharedData.SelectAllArmy && !data.SelectAllArmyLast)
+            || (data.SharedData.SelectAllMelee && !data.SelectAllMeleeLast)
+            || (data.SharedData.SelectAllRanged && !data.SelectAllRangedLast)
+            || (data.SharedData.SelectAllHeroes && !data.SelectAllHeroesLast);
+    }
+
+    // Mirrors the vanilla group-select hotkeys (Update's "Select All Army/Melee/Ranged/Heroes"
+    // branches): tag-filter the whole map's units and route them through the same host-authoritative
+    // CommandAddPacket the attract flow uses. Runs on the SERVER for every pawn (inputs are synced).
+    private static void TrySelectGroups(CommandUnits self, PlayerNetworkData data, List<PathfindMovementPlayerunit> commanding)
+    {
+        if (data.SharedData.SelectAllArmy && !data.SelectAllArmyLast)
+        {
+            SelectGroup(self, data, commanding, null, null);
+        }
+
+        if (data.SharedData.SelectAllMelee && !data.SelectAllMeleeLast)
+        {
+            SelectGroup(self, data, commanding, TagManager.ETag.MeeleFighter, TagManager.ETag.PlayerHeroUnit);
+        }
+
+        if (data.SharedData.SelectAllRanged && !data.SelectAllRangedLast)
+        {
+            SelectGroup(self, data, commanding, TagManager.ETag.RangedFighter, TagManager.ETag.PlayerHeroUnit);
+        }
+
+        if (data.SharedData.SelectAllHeroes && !data.SelectAllHeroesLast)
+        {
+            SelectGroup(self, data, commanding, TagManager.ETag.PlayerHeroUnit, null);
+        }
+    }
+
+    private static readonly List<TagManager.ETag> GroupMustHave = new();
+    private static readonly List<TagManager.ETag> GroupMayNotHave = new();
+    private static readonly List<TaggedObject> GroupResults = new();
+
+    private static void SelectGroup(
+        CommandUnits self,
+        PlayerNetworkData data,
+        List<PathfindMovementPlayerunit> commanding,
+        TagManager.ETag? mustAlsoHave,
+        TagManager.ETag? mayNotHave)
+    {
+        GroupMustHave.Clear();
+        GroupMayNotHave.Clear();
+        GroupResults.Clear();
+        GroupMustHave.Add(TagManager.ETag.PlayerUnit);
+        if (mustAlsoHave != null)
+        {
+            GroupMustHave.Add(mustAlsoHave.Value);
+        }
+
+        if (mayNotHave != null)
+        {
+            GroupMayNotHave.Add(mayNotHave.Value);
+        }
+
+        TagManager.instance.FindAllTaggedObjectsWithTags(GroupResults, GroupMustHave, GroupMayNotHave);
+
+        var toAdd = new List<IdentifierData>();
+        foreach (var taggedObject in GroupResults)
+        {
+            var unit = taggedObject.GetComponent<PathfindMovementPlayerunit>();
+            if (unit == null)
+            {
+                continue;
+            }
+
+            var followingPlayer = Traverse.Create(unit).Field<bool>("followingPlayer");
+            if (!followingPlayer.Value && !commanding.Contains(unit))
+            {
+                toAdd.Add(new IdentifierData(unit.GetComponent<Identifier>()));
+            }
+        }
+
+        if (toAdd.Count > 0)
+        {
+            Plugin.Instance.Network.Send(new CommandAddPacket
+            {
+                Player = data.id,
+                Units = toAdd
+            }, true);
+        }
     }
 
     private static void HandleNotCommanding(CommandUnits self, List<PathfindMovementPlayerunit> commanding, PlayerNetworkData data)
@@ -70,6 +163,13 @@ public static class CommandUnitsPatch
         }
         
         var units = Traverse.Create(self).Field<List<PathfindMovementPlayerunit>>("playerUnitsCommanding");
+        if (Plugin.Instance.Network.Server && hpPlayer.Value.HpValue > 0f)
+        {
+            // Group-select hotkeys (1/2/3/4) — vanilla handles these in Update; the replacement above
+            // dropped them, so they never worked in multiplayer.
+            TrySelectGroups(self, data, units.Value);
+        }
+
         if (data.SharedData.CommandUnitsButton && hpPlayer.Value.HpValue > 0f)
         {
             if (!Plugin.Instance.Network.Server)
@@ -115,7 +215,9 @@ public static class CommandUnitsPatch
         var hpPlayer = Traverse.Create(self).Field<Hp>("hpPlayer");
         var timeSincePlace = Traverse.Create(self).Field<float>("timeSincePlace");
         var switchedToHold = Traverse.Create(self).Field<bool>("switchedToHold");
-        if (data.SharedData.CommandUnitsButton && !data.CommandUnitsButtonLast || hpPlayer.Value.HpValue <= 0f)
+        // A group-select key while commanding places the units (vanilla TryToSelectUnits's toggle-off).
+        if (data.SharedData.CommandUnitsButton && !data.CommandUnitsButtonLast || GroupKeyPressed(data) ||
+            hpPlayer.Value.HpValue <= 0f)
         {
             self.PlaceCommandedUnitsAndCalculateTargetPositions(false);
             timeSincePlace.Value = 0f;
