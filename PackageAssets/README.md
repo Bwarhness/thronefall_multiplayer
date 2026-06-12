@@ -30,6 +30,14 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.4 (community update)
+* New: the army group-select hotkeys (1/2/3 — and the heroes key) now work in multiplayer. Pressing one
+  grabs your whole army / melee / ranged / heroes from anywhere on the map, same as single player; pressing
+  again places them.
+* Fixed two NullReferenceException floods (gates near upgraded walls, and a vanilla position-freeze
+  component on multiplayer pawns).
+* Both players must be on 1.1.4.
+
 #### 1.1.3 (community update)
 * Fixed picking certain perks giving you a DIFFERENT perk in multiplayer (e.g. Resilient Residences turning
   into Last Stand): every perk, weapon, mutator and tower upgrade added to the game since 2023 was missing
