@@ -190,6 +190,14 @@ public class Network : MonoBehaviour
         
         Plugin.Log.LogInfoFiltered("Network", $"Sending peer sync");
         Send(packet);
+
+        var unlocks = PacketHandler.BuildHostUnlocksPacket();
+        if (unlocks.Unlocks.Count > 0)
+        {
+            var sid = new SteamNetworkingIdentity();
+            sid.SetSteamID(id);
+            SendSingle(unlocks, sid);
+        }
     }
 
     public void KickPeer(CSteamID id, DisconnectPacket.Reason reason)
@@ -283,6 +291,8 @@ public class Network : MonoBehaviour
         // WeaponPicks would otherwise survive into the next session while player ids are regenerated,
         // polluting the next level-start weapon pre-fill with stale picks.
         LoadoutState.Reset();
+        // Session-only host unlocks must not leak into offline play or the next lobby.
+        HostUnlocks.Reset();
         if (PacketHandler.AwaitingConnectionApproval)
         {
             UIManager.LobbyListPanel.CloseConnectingDialog();
@@ -402,6 +412,11 @@ public class Network : MonoBehaviour
 
     public void Send(BasePacket basePacket, bool handleLocal = false, CSteamID except = new())
     {
+        if (basePacket is LoadoutOpenPacket openPacket)
+        {
+            Plugin.Log.LogInfo($"[LoadoutDiag] tx LoadoutOpen scene={openPacket.Scene} peers={_peers.Count} handleLocal={handleLocal} except={except.m_SteamID}");
+        }
+
         if (Online && _peers.Count > 0)
         {
             var buffer = new Buffer();
@@ -501,6 +516,7 @@ public class Network : MonoBehaviour
         { LoadoutWeaponPacket.PacketID, typeof(LoadoutWeaponPacket) },
         { LoadoutClosePacket.PacketID, typeof(LoadoutClosePacket) },
         { LoadoutStateRequestPacket.PacketID, typeof(LoadoutStateRequestPacket) },
+        { HostUnlocksPacket.PacketID, typeof(HostUnlocksPacket) },
         { CombinedPacket.PacketID, typeof(CombinedPacket) },
         { DamageFeedbackPacket.PacketID, typeof(DamageFeedbackPacket) },
         { DayNightPacket.PacketID, typeof(DayNightPacket) },
@@ -567,6 +583,10 @@ public class Network : MonoBehaviour
         }
         else
         {
+            if (basePacket is LoadoutOpenPacket openPacket)
+            {
+                Plugin.Log.LogInfo($"[LoadoutDiag] rx LoadoutOpen scene={openPacket.Scene} from={sender.GetSteamID().m_SteamID}");
+            }
             HandlePacket(ref sender, basePacket);
         }
     }

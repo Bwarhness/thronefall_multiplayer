@@ -62,6 +62,7 @@ public enum PacketId
     LoadoutWeapon,
     LoadoutClose,
     LoadoutStateRequest,
+    HostUnlocks,
 }
 
 public static class PacketHandler
@@ -80,6 +81,7 @@ public static class PacketHandler
         { LoadoutWeaponPacket.PacketID, HandleLoadoutWeapon },
         { LoadoutClosePacket.PacketID, HandleLoadoutClose },
         { LoadoutStateRequestPacket.PacketID, HandleLoadoutStateRequest },
+        { HostUnlocksPacket.PacketID, HandleHostUnlocks },
         { DamageFeedbackPacket.PacketID, HandleDamageFeedback },
         { DayNightPacket.PacketID, HandleDayNight },
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
@@ -259,6 +261,7 @@ public static class PacketHandler
                 LoadoutState.SuppressNextDiff = true;
                 LoadoutFrames.CloseAllPopupFrames();
                 UIFrameManager.ForceOpenLevelSelect();
+                OpenRemoteLoadoutGrid();
                 if (Plugin.Instance.Network.Server)
                 {
                     // The relay excludes the original sender, so when two machines opened different
@@ -278,11 +281,28 @@ public static class PacketHandler
             {
                 // The frame didn't actually open (unexpected active frame) — don't leak the flag.
                 LoadoutState.RemoteOpenPending = false;
+                return;
             }
+
+            OpenRemoteLoadoutGrid();
             return;
         }
 
         Plugin.Log.LogInfo($"LoadoutOpen for unknown level '{packet.Scene}', ignoring");
+    }
+
+    private static void OpenRemoteLoadoutGrid()
+    {
+        var grid = LoadoutFrames.GridFrame;
+        if (grid == null || UIFrameManager.instance.ActiveFrame == grid)
+        {
+            return;
+        }
+
+        // LoadoutUIHelper.OnShow() rebuilds the grid and can mutate CurrentlyEquipped
+        // (auto-equip first weapon, etc.). Do not broadcast that rebuild as a local edit.
+        LoadoutState.SuppressNextDiff = true;
+        UIFrameManager.instance.ChangeActiveFrame(grid);
     }
 
     private static void HandleLoadoutSelection(SteamNetworkingIdentity sender, BasePacket ipacket)
@@ -385,10 +405,59 @@ public static class PacketHandler
         Plugin.Log.LogInfo("[LoadoutDiag] replaying loadout state to a late peer");
         var network = Plugin.Instance.Network;
         network.SendSingle(new LoadoutOpenPacket { Scene = LevelInteractor.lastActiveLevelInfo.sceneName }, sender);
+        network.SendSingle(BuildHostUnlocksPacket(), sender);
         network.SendSingle(new LoadoutSelectionPacket { Selection = CaptureNonWeaponSelection() }, sender);
         foreach (var pick in LoadoutState.WeaponPicks)
         {
             network.SendSingle(new LoadoutWeaponPacket { PlayerId = pick.Key, Weapon = pick.Value }, sender);
+        }
+    }
+
+    internal static HostUnlocksPacket BuildHostUnlocksPacket()
+    {
+        var packet = new HostUnlocksPacket();
+        if (PerkManager.instance == null)
+        {
+            return packet;
+        }
+
+        foreach (var equippable in PerkManager.instance.allEquippables)
+        {
+            if (!equippable.IsUnlocked)
+            {
+                continue;
+            }
+
+            var equipment = Equip.Convert(equippable.name);
+            if (equipment != Equipment.Invalid)
+            {
+                packet.Unlocks.Add(equipment);
+            }
+        }
+
+        return packet;
+    }
+
+    private static void HandleHostUnlocks(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        if (!Plugin.Instance.Network.IsServer(sender.GetSteamID()))
+        {
+            return;
+        }
+
+        var packet = (HostUnlocksPacket)ipacket;
+        HostUnlocks.Session.Clear();
+        foreach (var equipment in packet.Unlocks)
+        {
+            if (equipment != Equipment.Invalid)
+            {
+                HostUnlocks.Session.Add(equipment);
+            }
+        }
+
+        if (LoadoutFrames.PopupOpen && UIFrameManager.instance != null)
+        {
+            LoadoutFrames.HelperFor(UIFrameManager.instance.ActiveFrame)?.OnShow();
         }
     }
 

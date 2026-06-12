@@ -109,10 +109,39 @@ public static class LoadoutFrames
         }
     }
 
+    // The Classic campaign grid frame, or null if it is not resolved yet.
+    public static UIFrame GridFrame
+    {
+        get
+        {
+            Resolve();
+            foreach (var helper in _loadoutHelpers)
+            {
+                if (helper != null && helper.frame != null && helper.mode == LocalGamestate.GameMode.Classic)
+                {
+                    return helper.frame;
+                }
+            }
+
+            return null;
+        }
+    }
+
     public static bool PopupOpen =>
         SceneTransitionManagerPatch.InLevelSelect &&
         UIFrameManager.instance != null &&
         IsPopupFrame(UIFrameManager.instance.ActiveFrame);
+
+    // Diagnostic snapshot used by LoadoutWatcher heartbeat logging.
+    public static string DebugState()
+    {
+        Resolve();
+        var active = UIFrameManager.instance != null ? UIFrameManager.instance.ActiveFrame : null;
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"resolved={_resolved} levelSelect={(_levelSelect != null ? _levelSelect.name : "null")} ");
+        sb.Append($"helpers={_loadoutHelpers.Count} activeFrame={(active != null ? active.name : "null")}");
+        return sb.ToString();
+    }
 
     // Closing can pop the grid back to the level-select frame rather than fully exiting, so close until
     // no popup-family frame is active (bounded — the family is at most a few frames deep).

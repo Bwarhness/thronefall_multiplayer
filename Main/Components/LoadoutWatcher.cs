@@ -19,10 +19,43 @@ public class LoadoutWatcher : MonoBehaviour
     private int _lastPlayerCount;
     private List<Equipment> _selectionSnapshot = new();
     private Equipment _weaponSnapshot = Equipment.Invalid;
+    private float _diagHeartbeat;
+    private bool _lastOnline;
+    private bool _lastInLevelSelect;
+    private bool _lastPopupOpen;
 
     private void Update()
     {
         var network = Plugin.Instance.Network;
+        var inLevelSelect = SceneTransitionManagerPatch.InLevelSelect;
+        var online = network.Online;
+
+        // Heartbeat + state-transition logging to disambiguate "no diag lines" cases.
+        var popupOpen = LoadoutFrames.PopupOpen;
+        if (online != _lastOnline || inLevelSelect != _lastInLevelSelect || popupOpen != _lastPopupOpen)
+        {
+            _lastOnline = online;
+            _lastInLevelSelect = inLevelSelect;
+            _lastPopupOpen = popupOpen;
+            Plugin.Log.LogInfo($"[LoadoutDiag] state online={online} inLevelSelect={inLevelSelect} " +
+                $"popupOpen={popupOpen} _open={_open} {LoadoutFrames.DebugState()}");
+        }
+
+        if (online || inLevelSelect)
+        {
+            _diagHeartbeat += Time.deltaTime;
+            if (_diagHeartbeat >= 5f)
+            {
+                _diagHeartbeat = 0f;
+                Plugin.Log.LogInfo($"[LoadoutDiag] heartbeat online={online} inLevelSelect={inLevelSelect} " +
+                    $"popupOpen={popupOpen} _open={_open} server={network.Server} {LoadoutFrames.DebugState()}");
+            }
+        }
+        else
+        {
+            _diagHeartbeat = 0f;
+        }
+
         if (!network.Online || !SceneTransitionManagerPatch.InLevelSelect)
         {
             _ready = false;
