@@ -500,6 +500,7 @@ public class Network : MonoBehaviour
         { LoadoutSelectionPacket.PacketID, typeof(LoadoutSelectionPacket) },
         { LoadoutWeaponPacket.PacketID, typeof(LoadoutWeaponPacket) },
         { LoadoutClosePacket.PacketID, typeof(LoadoutClosePacket) },
+        { LoadoutStateRequestPacket.PacketID, typeof(LoadoutStateRequestPacket) },
         { CombinedPacket.PacketID, typeof(CombinedPacket) },
         { DamageFeedbackPacket.PacketID, typeof(DamageFeedbackPacket) },
         { DayNightPacket.PacketID, typeof(DayNightPacket) },

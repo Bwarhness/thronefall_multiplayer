@@ -61,6 +61,7 @@ public enum PacketId
     LoadoutSelection,
     LoadoutWeapon,
     LoadoutClose,
+    LoadoutStateRequest,
 }
 
 public static class PacketHandler
@@ -78,6 +79,7 @@ public static class PacketHandler
         { LoadoutSelectionPacket.PacketID, HandleLoadoutSelection },
         { LoadoutWeaponPacket.PacketID, HandleLoadoutWeapon },
         { LoadoutClosePacket.PacketID, HandleLoadoutClose },
+        { LoadoutStateRequestPacket.PacketID, HandleLoadoutStateRequest },
         { DamageFeedbackPacket.PacketID, HandleDamageFeedback },
         { DayNightPacket.PacketID, HandleDayNight },
         { EnemySpawnPacket.PacketID, HandleEnemySpawn },
@@ -211,6 +213,9 @@ public static class PacketHandler
     private static void HandleLoadoutOpen(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (LoadoutOpenPacket)ipacket;
+        Plugin.Log.LogInfo(
+            $"[LoadoutDiag] open rx scene={packet.Scene} inLevelSelect={SceneTransitionManagerPatch.InLevelSelect} " +
+            $"mgr={LevelSelectManager.instance != null}");
         if (!SceneTransitionManagerPatch.InLevelSelect || LevelSelectManager.instance == null ||
             UIFrameManager.instance == null)
         {
@@ -365,6 +370,26 @@ public static class PacketHandler
         }
 
         LoadoutState.WeaponPicks[packet.PlayerId] = packet.Weapon;
+    }
+
+    private static void HandleLoadoutStateRequest(SteamNetworkingIdentity sender, BasePacket ipacket)
+    {
+        if (!Plugin.Instance.Network.Server || !LoadoutFrames.PopupOpen ||
+            LevelInteractor.lastActiveLevelInfo == null)
+        {
+            return;
+        }
+
+        // A peer that finished joining (or returned to the overworld) while the popup is open missed
+        // the original broadcasts — replay the full popup state to just that peer.
+        Plugin.Log.LogInfo("[LoadoutDiag] replaying loadout state to a late peer");
+        var network = Plugin.Instance.Network;
+        network.SendSingle(new LoadoutOpenPacket { Scene = LevelInteractor.lastActiveLevelInfo.sceneName }, sender);
+        network.SendSingle(new LoadoutSelectionPacket { Selection = CaptureNonWeaponSelection() }, sender);
+        foreach (var pick in LoadoutState.WeaponPicks)
+        {
+            network.SendSingle(new LoadoutWeaponPacket { PlayerId = pick.Key, Weapon = pick.Value }, sender);
+        }
     }
 
     private static void HandleLoadoutClose(SteamNetworkingIdentity sender, BasePacket ipacket)

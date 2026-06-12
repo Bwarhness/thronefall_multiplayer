@@ -30,6 +30,13 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.1 (community update)
+* Fixed the shared loadout popup not opening on the other player's machine: opens that arrived while a
+  player was still joining (or mid scene-fade) were silently dropped and never re-sent — the popup state
+  is now re-requested and replayed once the machine is actually ready. Also fixed an internal flag leak
+  that could stop a player's popup-opens from broadcasting for the rest of the session.
+* Added temporary [LoadoutDiag] log lines to pin down any remaining popup sync issues.
+
 #### 1.1.0 (community update)
 * New: shared loadout screen. Opening a level's popup now opens it for every player; perks and mutators are
   selected together in real time; each player picks their own weapon right in the popup and everyone can see

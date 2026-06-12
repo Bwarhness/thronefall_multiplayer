@@ -15,6 +15,7 @@ namespace ThronefallMP.Components;
 public class LoadoutWatcher : MonoBehaviour
 {
     private bool _open;
+    private bool _ready;
     private int _lastPlayerCount;
     private List<Equipment> _selectionSnapshot = new();
     private Equipment _weaponSnapshot = Equipment.Invalid;
@@ -24,6 +25,7 @@ public class LoadoutWatcher : MonoBehaviour
         var network = Plugin.Instance.Network;
         if (!network.Online || !SceneTransitionManagerPatch.InLevelSelect)
         {
+            _ready = false;
             if (_open)
             {
                 // Scene changed / went offline while the popup was open; clean up silently.
@@ -32,6 +34,20 @@ public class LoadoutWatcher : MonoBehaviour
                 LoadoutState.Reset();
             }
             return;
+        }
+
+        if (!_ready)
+        {
+            _ready = true;
+            if (!network.Server)
+            {
+                // While joining (and during scene transitions) InLevelSelect is false and every loadout
+                // packet is silently dropped — the natural "open the popup while the friend's screen is
+                // still fading in" flow loses the one-and-only open broadcast. Now that this machine can
+                // actually show the popup, ask the host to replay its state if one is open.
+                Plugin.Log.LogInfo("[LoadoutDiag] ready, requesting loadout state");
+                network.Send(new LoadoutStateRequestPacket());
+            }
         }
 
         var open = LoadoutFrames.PopupOpen;
@@ -103,11 +119,17 @@ public class LoadoutWatcher : MonoBehaviour
         _lastPlayerCount = Plugin.Instance.PlayerManager.GetAllPlayers().Count();
         LoadoutState.WeaponPicks[Plugin.Instance.PlayerManager.LocalId] = _weaponSnapshot;
 
-        if (LoadoutState.RemoteOpenPending)
+        var remote = LoadoutState.RemoteOpenPending;
+        // Consume BOTH pendings: a remote open+close handled in the same packet pump produces no UI
+        // edge, and a leaked flag would misclassify this (or a later) edge.
+        LoadoutState.RemoteOpenPending = false;
+        LoadoutState.RemoteClosePending = false;
+        Plugin.Log.LogInfo($"[LoadoutDiag] open edge remote={remote} level=" +
+            (LevelInteractor.lastActiveLevelInfo != null ? LevelInteractor.lastActiveLevelInfo.sceneName : "null"));
+        if (remote)
         {
             // Opened because another player opened it: publish only our own weapon pick; the opener's
             // selection broadcast is authoritative for the shared perks/mutators.
-            LoadoutState.RemoteOpenPending = false;
             BroadcastWeapon(network);
         }
         else
@@ -128,11 +150,11 @@ public class LoadoutWatcher : MonoBehaviour
     // revert nothing.
     private void OnClosed(Network.Network network)
     {
-        if (LoadoutState.RemoteClosePending)
-        {
-            LoadoutState.RemoteClosePending = false;
-        }
-        else
+        var remote = LoadoutState.RemoteClosePending;
+        LoadoutState.RemoteClosePending = false;
+        LoadoutState.RemoteOpenPending = false;
+        Plugin.Log.LogInfo($"[LoadoutDiag] close edge remote={remote}");
+        if (!remote)
         {
             network.Send(new LoadoutClosePacket());
         }
