@@ -31,6 +31,7 @@ Rikhardur Bjarni Einarsson (BadWolf)
 ## Changelog
 
 #### 1.1.2 (community update)
+* **Both players must be on 1.1.2** — the wire format changed.
 * New: joining players can now select the same loadout items (perks, weapons, mutators) as the host for the
   duration of the session. Host unlocks are sent to joining clients and are not saved to their game.
 * Fixed: the shared loadout popup now opens the actual perk/weapon/mutator grid on remote players, not just
