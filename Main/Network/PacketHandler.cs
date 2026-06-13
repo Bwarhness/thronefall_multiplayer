@@ -356,6 +356,14 @@ public static class PacketHandler
         if (helper != null)
         {
             helper.OnShow();
+            // OnShow destroys and recreates the grid's buttons. The vanilla open path calls OnShow via
+            // UIFrame.Activate, which then runs RefetchManagedElements() to re-register the new buttons
+            // with the frame's input system (it drives BOTH mouse and controller off managedElements).
+            // Calling OnShow directly skips that, leaving managedElements pointing at the destroyed
+            // buttons — so after a remote selection the grid renders but every click is dead. This is
+            // why only the last player to open could interact: the others received a rebuild that
+            // orphaned their input. Re-register the rebuilt buttons.
+            active.RefetchManagedElements();
             var applied = CaptureNonWeaponSelection();
             requested.Sort();
             if (!applied.SequenceEqual(requested))

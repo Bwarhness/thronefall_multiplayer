@@ -30,6 +30,13 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.7 (community update)
+* Fixed the shared loadout grid going "dead" for everyone except the last player to open it — you could see
+  the grid but clicking perks did nothing. When another player's selection arrived, the grid was rebuilt
+  without re-registering its buttons with the input system, so all clicks (mouse and controller) missed.
+  The buttons are now re-registered after every remote update, so all players can interact at the same time.
+* Both players must be on 1.1.7.
+
 #### 1.1.6 (community update)
 * Fixed the shared loadout popup never auto-opening on the other player's machine. The receiver bailed
   immediately because it relied on a level-select manager that is never initialised on a joined client, so
