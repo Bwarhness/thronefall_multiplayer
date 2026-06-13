@@ -245,21 +245,33 @@ public class Network : MonoBehaviour
 
         for (var i = 0; i < received; ++i)
         {
-            var message = Marshal.PtrToStructure<SteamNetworkingMessage_t>(_messages[i]);
-            if (_peers.Contains(message.m_identityPeer.GetSteamID()))
+            try
             {
-                var buffer = new Buffer(message.m_cbSize);
-                Marshal.Copy(message.m_pData, buffer.Data, 0, buffer.Data.Length);
-                HandlePacket(ref message.m_identityPeer, buffer, PacketTypes);
+                var message = Marshal.PtrToStructure<SteamNetworkingMessage_t>(_messages[i]);
+                if (_peers.Contains(message.m_identityPeer.GetSteamID()))
+                {
+                    var buffer = new Buffer(message.m_cbSize);
+                    Marshal.Copy(message.m_pData, buffer.Data, 0, buffer.Data.Length);
+                    HandlePacket(ref message.m_identityPeer, buffer, PacketTypes);
+                }
+                else if (_pendingPeers.Contains(message.m_identityPeer.GetSteamID()))
+                {
+                    var buffer = new Buffer(message.m_cbSize);
+                    Marshal.Copy(message.m_pData, buffer.Data, 0, buffer.Data.Length);
+                    HandlePacket(ref message.m_identityPeer, buffer, PendingPeerPacketTypes);
+                }
             }
-            else if (_pendingPeers.Contains(message.m_identityPeer.GetSteamID()))
+            catch (Exception e)
             {
-                var buffer = new Buffer(message.m_cbSize);
-                Marshal.Copy(message.m_pData, buffer.Data, 0, buffer.Data.Length);
-                HandlePacket(ref message.m_identityPeer, buffer, PendingPeerPacketTypes);
+                // A handler throwing must not abort the batch or — via the skipped Release below —
+                // leak the native Steam message. A per-frame handler exception that leaks handles
+                // exhausts native memory and hard-crashes the process, so the Release is in finally.
+                Plugin.Log.LogError($"Exception handling packet on channel {channel}: {e}");
             }
-                    
-            SteamNetworkingMessage_t.Release(_messages[i]);
+            finally
+            {
+                SteamNetworkingMessage_t.Release(_messages[i]);
+            }
         }
 
         return received != 0;

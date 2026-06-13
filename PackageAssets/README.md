@@ -30,6 +30,12 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.5 (community update)
+* Fixed a client crash: HP sync could hit a target with no health component and throw every frame, and the
+  network receive loop leaked the underlying message each time until the game ran out of memory and crashed.
+  The HP case is now guarded, and a thrown packet handler can no longer leak or take down the connection.
+* Both players must be on 1.1.5.
+
 #### 1.1.4 (community update)
 * New: the army group-select hotkeys (1/2/3 — and the heroes key) now work in multiplayer. Pressing one
   grabs your whole army / melee / ranged / heroes from anywhere on the map, same as single player; pressing

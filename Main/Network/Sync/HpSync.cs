@@ -99,7 +99,11 @@ public class HpSync : BaseTargetSync
         }
 
         var hp = target.GetComponent<Hp>();
-        if (hp.TaggedObj == null)
+        // hp can be null (the Identifier resolved a GameObject with no Hp, e.g. certain buildings) or
+        // Unity-fake-null (destroyed) — dereferencing hp.TaggedObj then NRE-floods every frame, and
+        // each escape leaks the native Steam message handle (see Network.HandleChannel), eventually
+        // hard-crashing the client.
+        if (hp == null || hp.TaggedObj == null)
         {
             return;
         }
