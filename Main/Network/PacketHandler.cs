@@ -215,20 +215,23 @@ public static class PacketHandler
     private static void HandleLoadoutOpen(SteamNetworkingIdentity sender, BasePacket ipacket)
     {
         var packet = (LoadoutOpenPacket)ipacket;
-        Plugin.Log.LogInfo(
-            $"[LoadoutDiag] open rx scene={packet.Scene} inLevelSelect={SceneTransitionManagerPatch.InLevelSelect} " +
-            $"mgr={LevelSelectManager.instance != null}");
-        if (!SceneTransitionManagerPatch.InLevelSelect || LevelSelectManager.instance == null ||
-            UIFrameManager.instance == null)
+        if (!SceneTransitionManagerPatch.InLevelSelect || UIFrameManager.instance == null)
         {
             return;
         }
 
-        var interactors = Traverse.Create(LevelSelectManager.instance)
-            .Field<LevelInteractor[]>("levelInteractors").Value;
+        // Find the interactors by scanning the scene rather than via LevelSelectManager.instance.
+        // On a client that joined through the mod's networked transition that singleton is NULL (its
+        // Awake never ran), which silently broke remote auto-open for the whole life of the feature —
+        // the old `LevelSelectManager.instance == null` guard bailed on the first line of every
+        // received open. The interactors themselves are present and functional (manual open works),
+        // so FindObjectsOfType resolves them on both host and client.
+        var interactors = UnityEngine.Object.FindObjectsOfType<LevelInteractor>(true);
+        Plugin.Log.LogInfo($"[LoadoutDiag] open rx scene={packet.Scene} interactors={interactors.Length}");
         foreach (var interactor in interactors)
         {
-            if (interactor.levelInfo.sceneName != packet.Scene)
+            if (interactor == null || interactor.levelInfo == null ||
+                interactor.levelInfo.sceneName != packet.Scene)
             {
                 continue;
             }

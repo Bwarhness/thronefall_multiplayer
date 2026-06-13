@@ -30,6 +30,15 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.6 (community update)
+* Fixed the shared loadout popup never auto-opening on the other player's machine. The receiver bailed
+  immediately because it relied on a level-select manager that is never initialised on a joined client, so
+  the open packet was silently ignored every time (this is why it only ever "worked" when both players
+  opened it manually). It now finds the level the proper way and opens for everyone.
+* Includes the 1.1.5 client-crash fix (HP sync could throw every frame and leak network messages until the
+  game ran out of memory).
+* Both players must be on 1.1.6.
+
 #### 1.1.5 (community update)
 * Fixed a client crash: HP sync could hit a target with no health component and throw every frame, and the
   network receive loop leaked the underlying message each time until the game ran out of memory and crashed.
