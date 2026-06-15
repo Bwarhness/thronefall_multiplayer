@@ -22,14 +22,16 @@ public class EnemySpawnerPatch
     private static void OnSave(On.EnemySpawner.orig_OnSave original, EnemySpawner self, string guid)
     {
 	    original(self, guid);
-	    // Vanilla persists gold per-pawn ("balance" on each PlayerInteraction), but in MP the pawn
-	    // clones share one SaveLoadEntity GUID and only the local pawn mirrors the shared gold, so
-	    // which pawn's value lands in the save is enumeration-order luck. Persist the shared balance
-	    // on the EnemySpawner entity instead — it is always present in the scene's entity snapshot.
-	    // TrueBalance folds in coins still on the ground / in flight, matching what vanilla saves.
-	    var interaction = PlayerInteraction.instance;
-	    MatchSaveLoadHandler.SaveValue(guid, "mpSharedBalance",
-		    interaction != null ? interaction.TrueBalance : GlobalData.Internal.Balance);
+	    // Persist the AUTHORITATIVE shared gold (GlobalData.Internal.Balance) — the exact value the
+	    // restore writes back into (EnemySpawnerPatch.Start) and the value shown on the gold counter.
+	    // Previously this saved PlayerInteraction.instance.TrueBalance (the host pawn's balance), which
+	    // only tracks the shared gold via a per-frame mirror; when that pawn's balance was stale/low the
+	    // dawn save captured a tiny value (e.g. 8) and Retry Day wiped the team's accumulated economy.
+	    // Saving GlobalData.Internal.Balance makes save and restore symmetric and removes the mirror
+	    // dependency. (Host-only field, but it is also valid/zero on clients whose save we never restore.)
+	    var balance = GlobalData.Internal.Balance;
+	    MatchSaveLoadHandler.SaveValue(guid, "mpSharedBalance", balance);
+	    Plugin.Log.LogInfo($"[GoldDiag] saved mpSharedBalance={balance} wave={self.Wavenumber}");
     }
 
     private static void OnLoad(On.EnemySpawner.orig_OnLoad original, EnemySpawner self, string guid)

@@ -30,6 +30,14 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.9 (community update)
+* Fixed Retry Day wiping your team's gold. The per-day save was recording a stale, far-too-low balance
+  instead of your actual shared gold, so retrying could throw away your whole economy. It now saves the
+  real shared balance (the number on the gold counter).
+* Fixed an error flood when a player hit certain targets (damage-feedback effect with no assigned prefab).
+* Fixed an error flood from leftover player references after retries (player-spacing component).
+* Both players must be on 1.1.9.
+
 #### 1.1.8 (community update)
 * Fixed a bogus instant "Defeat" that could hit a joining player the moment they entered a fresh level.
   Each player was deciding the loss for themselves, so while a client's castle health was still syncing in
