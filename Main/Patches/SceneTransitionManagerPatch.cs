@@ -101,12 +101,17 @@ public static class SceneTransitionManagerPatch
             // TaggedObject only prunes itself from TagManager via OnDisable, which never fires when a GO
             // is destroyed while inactive. A leftover Player-tagged entry survives as a Unity-fake-null in
             // TagManager.bufferedPlayers into the next scene (phantom players=3), tripping gate/PushPlayer2D
-            // floods. Unregister explicitly before destroy so the entry is gone regardless of active state.
+            // floods. RemoveTaggedObject only touches the unit/enemy lists + per-tag dicts and NEVER the
+            // bufferedPlayers list (ETag.Player), so we also Remove from bufferedPlayers directly — no
+            // fake-null ever enters the next scene.
             if (TagManager.instance != null)
             {
+                var buffered = Traverse.Create(TagManager.instance)
+                    .Field<System.Collections.Generic.List<TaggedObject>>("bufferedPlayers").Value;
                 foreach (var tagged in data.GetComponentsInChildren<TaggedObject>(true))
                 {
-                    TagManager.instance.RemoveTaggedObject(tagged);
+                    TagManager.instance.RemoveTaggedObject(tagged); // unit/enemy lists + per-tag dicts
+                    buffered?.Remove(tagged);                       // the Player list RemoveTaggedObject misses
                 }
             }
 

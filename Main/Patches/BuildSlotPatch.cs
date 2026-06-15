@@ -66,7 +66,7 @@ public static class BuildSlotPatch
         if (TagManager.instance != null)
         {
             var buffered = Traverse.Create(TagManager.instance)
-                .Field<System.Collections.Generic.List<TaggedObject>>("bufferedPlayers").Value;
+                .Field<List<TaggedObject>>("bufferedPlayers").Value;
             buffered?.RemoveAll(o => o == null);
         }
     }
