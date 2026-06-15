@@ -58,6 +58,17 @@ public static class BuildSlotPatch
         }
 
         CoinPrefab = root.buildingInteractor.coinSpawner.coinPrefab;
+
+        // Safety net for the phantom-player root cause: a Player-tagged TaggedObject destroyed while
+        // inactive never runs OnDisable, so it lingers in TagManager.bufferedPlayers as a Unity-fake-null
+        // entry into the next gameplay scene (players=3 with 2 players -> gate/PushPlayer2D NREs). Runs
+        // once per gameplay-scene load on every peer (only the activator-less root BuildSlot reaches here).
+        if (TagManager.instance != null)
+        {
+            var buffered = Traverse.Create(TagManager.instance)
+                .Field<System.Collections.Generic.List<TaggedObject>>("bufferedPlayers").Value;
+            buffered?.RemoveAll(o => o == null);
+        }
     }
 
     private static void AssignId(BuildSlot self, ushort id)
@@ -181,6 +192,17 @@ public static class BuildSlotPatch
         upgradeSelected.Value = upgrade;
         _disableNetworkHook = true;
         building.buildingInteractor.MarkAsHarvested();
+        // Activator-gated / startDeactivated slots (walls, wall-towers, tiered buildings) keep their
+        // root GameObject inactive until their activator's OnUpgrade event fires — which never happens
+        // for a network-driven build on the non-builder peer. Without an active ancestor,
+        // OnUpgradeChoiceComplete's buildingParent.SetActive(true) leaves activeInHierarchy false, so the
+        // 'Main Mesh' GO stays inactive and BuildingMeshTracker.FreezeMeshWithDelay cannot StartCoroutine
+        // to bake the MeshFusionPro combined mesh — the wall/building renders invisible. Mirror vanilla
+        // BuildSlot.Activate()'s root-GO activation here.
+        if (!building.gameObject.activeSelf)
+        {
+            building.gameObject.SetActive(true);
+        }
         building.OnUpgradeChoiceComplete(branch.choiceDetails);
         _disableNetworkHook = false;
         upgradeSelected.Value = null;

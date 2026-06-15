@@ -329,7 +329,7 @@ public static class Equip
             return;
         }
 
-        Plugin.Log.LogInfoFiltered("Equipment", $"Equipping {equipment} -> {equippable.displayName}");
+        Plugin.Log.LogInfoFiltered("Equipment", $"Equipping {equipment} -> {equippable.name} (\"{equippable.displayName}\")");
         PerkManager.instance.CurrentlyEquipped.Add(equippable);
     }
     
