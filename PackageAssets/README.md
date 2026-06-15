@@ -30,6 +30,12 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.2.1 (community update)
+* Fixed the game getting stuck on the night→day transition after defeating a boss (an already-dead boss/
+  minion in the cleanup list threw an error that aborted the transition, so dawn never arrived and the host
+  spammed errors). Boss days now end correctly.
+* Both players must be on 1.2.1.
+
 #### 1.2.0 (community update)
 * Fixed the long-standing bug where walls (and other buildings) built by one player were invisible to the
   other. Such structures keep their object disabled until "unlocked" locally, which never happened for a

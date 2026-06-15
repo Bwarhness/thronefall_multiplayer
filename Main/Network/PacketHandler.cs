@@ -179,8 +179,25 @@ public static class PacketHandler
                 EnemySpawner.instance.StopSpawnAfterWaveAndReset();
                 foreach (var enemy in Identifier.GetGameObjects(IdentifierType.Enemy))
                 {
+                    // A boss/minion that already died can linger in the Enemy identifier list as a
+                    // destroyed (Unity fake-null) GameObject, or an enemy may have no Hp. Calling
+                    // GetComponent on a destroyed object — or TakeDamage on a null Hp — throws, and
+                    // that NRE escapes the whole handler so the day-transition coroutine below never
+                    // starts: the host then re-sends DayNightPacket.Day every frame (observed after
+                    // defeating a boss). Skip the dead/invalid entries.
+                    if (enemy == null)
+                    {
+                        continue;
+                    }
+
+                    var hp = enemy.GetComponent<Hp>();
+                    if (hp == null)
+                    {
+                        continue;
+                    }
+
                     HpPatch.AllowHealthChangeOnClient = true;
-                    enemy.GetComponent<Hp>().TakeDamage(9999, null, true);
+                    hp.TakeDamage(9999, null, true);
                     HpPatch.AllowHealthChangeOnClient = false;
                 }
             }
