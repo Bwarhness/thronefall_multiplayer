@@ -30,6 +30,14 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.1.8 (community update)
+* Fixed a bogus instant "Defeat" that could hit a joining player the moment they entered a fresh level.
+  Each player was deciding the loss for themselves, so while a client's castle health was still syncing in
+  it could briefly look destroyed and trigger an immediate defeat — even though the host's game was fine
+  (clicking New Game again usually dodged it). Defeat is now decided only by the host, like victory already
+  is, so clients can't lose to a sync hiccup on load.
+* Both players must be on 1.1.8.
+
 #### 1.1.7 (community update)
 * Fixed the shared loadout grid going "dead" for everyone except the last player to open it — you could see
   the grid but clicking perks did nothing. When another player's selection arrived, the grid was rebuilt
