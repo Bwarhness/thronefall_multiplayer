@@ -52,6 +52,7 @@ namespace ThronefallMP
             PlayerManager = new Network.PlayerManager();
             CheatHandler = new CheatHandler();
             Logger.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Logger.LogInfo($"===== Thronefall Multiplayer v{PluginInfo.PLUGIN_VERSION} =====");
             Log = Logger;
             Log.LogInfo($"Little Endian: {BitConverter.IsLittleEndian}");
 

@@ -30,6 +30,10 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.2.2 (community update)
+* The main menu now shows the mod version in the bottom-right corner, so you can quickly check that both
+  players are on the same build (and the version is also logged clearly at startup).
+
 #### 1.2.1 (community update)
 * Fixed the game getting stuck on the night→day transition after defeating a boss (an already-dead boss/
   minion in the cleanup list threw an error that aborted the transition, so dawn never arrived and the host

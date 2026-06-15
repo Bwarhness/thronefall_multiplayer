@@ -101,6 +101,25 @@ public static class UIManager
         }
         
         multiplayer.SetActive(true);
+
+        // Show the mod version on the main menu so players can verify both machines are on the same
+        // build at a glance (the MP version check requires identical builds).
+        var versionObject = new GameObject("MP Version", typeof(RectTransform));
+        versionObject.transform.SetParent(TitleScreen.transform, false);
+        var versionRect = (RectTransform)versionObject.transform;
+        versionRect.anchorMin = new Vector2(1f, 0f);
+        versionRect.anchorMax = new Vector2(1f, 0f);
+        versionRect.pivot = new Vector2(1f, 0f);
+        versionRect.anchoredPosition = new Vector2(-18f, 14f);
+        versionRect.sizeDelta = new Vector2(500f, 30f);
+        var versionText = versionObject.AddComponent<TextMeshProUGUI>();
+        versionText.font = DefaultFont;
+        versionText.fontSize = 18;
+        versionText.alignment = TextAlignmentOptions.BottomRight;
+        versionText.color = new Color(1f, 1f, 1f, 0.5f);
+        versionText.raycastTarget = false;
+        versionText.text = $"Multiplayer v{PluginInfo.PLUGIN_VERSION}";
+
         _initialized = true;
     }
 
