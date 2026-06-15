@@ -30,6 +30,15 @@ Rikhardur Bjarni Einarsson (BadWolf)
 
 ## Changelog
 
+#### 1.2.0 (community update)
+* Fixed the long-standing bug where walls (and other buildings) built by one player were invisible to the
+  other. Such structures keep their object disabled until "unlocked" locally, which never happened for a
+  networked build, so the mesh never activated or rendered. The build now activates the structure on every
+  player's screen so it shows up (and the constant "Main Mesh inactive" errors are gone).
+* Fixed a leftover "phantom" player lingering after retries, which caused error spam around gates and player
+  spacing.
+* Both players must be on 1.2.0.
+
 #### 1.1.9 (community update)
 * Fixed Retry Day wiping your team's gold. The per-day save was recording a stale, far-too-low balance
   instead of your actual shared gold, so retrying could throw away your whole economy. It now saves the
